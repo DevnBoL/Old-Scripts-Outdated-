@@ -86,7 +86,7 @@ end)
 Callbacks:Bind("Draw", function()
 
 	if (not myHero.dead) then													-- Recommended for script readability.
-		--OnDrawRanges(Config.Drawing)
+		OnDrawRanges(Config.Drawing)
 	end
 
 end)
@@ -262,12 +262,10 @@ end
 
 Callbacks:Bind("Overrides", function()											-- Allows user to override global functions. Not required.
 
-	--[[
 	function SxOrb:GetTarget(range)
 	
 		return ((self:ValidTarget(CurrentTarget, range) and CurrentTarget) or Selector:GetTarget(Player:GetRange()))
 	
 	end
-	--]]
 
 end)
