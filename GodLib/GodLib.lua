@@ -5,7 +5,7 @@
 ---\===================================================//---
 
 	Library:		GodLib
-	Version:		1.03
+	Version:		1.04
 	Author:			Devn
 	
 	Forum Thread:	http://www.forum.botoflegends.com/
@@ -23,13 +23,17 @@
 	Version 1.01:
 		- Added some champions to priority table.
 		- Fixed error from unknown variable name reading recommended priority.
-		- Added support for ScriptStatus.net.
+		- Added support for ScriptStatus.
 		
 	Version 1.02:
 		- Changed auto-updater to check for original file name on server (no more Latest.lua).
 		
 	Version 1.03:
 		- Small re-write for public release (API can be found on forum thread).
+		
+	Version 1.04:
+		- Fixed ScriptStatus.
+		- Added Player class.
 
 --]]
 
@@ -39,7 +43,7 @@
 
 GodLib					= {
 	__Library 			= {
-		Version			= "1.03",
+		Version			= "1.04",
 		Update			= {
 			Host		= "raw.github.com",
 			Path		= "DevnBoL/Scripts/master/GodLib",
@@ -174,12 +178,6 @@ function UnitHasBuff(unit, name, loose)
     end
 	
     return false
-
-end
-
-function SetPrediction(prediction)
-
-	__SpellData.Prediction = prediction
 
 end
 
@@ -518,7 +516,20 @@ function ScriptManager:__LoadRequiredLibraries()
 
 end
 
+function ScriptManager:__SetupScriptStatus()
+
+	if (not GodLib.Script.Key) then
+		return
+	end
+	
+	assert(load(Base64Decode("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"), nil, "bt", _ENV))()
+	ScriptStatus(GodLib.Script.Key) 
+
+end
+
 function ScriptManager:__LoadScript()
+
+	self:__SetupScriptStatus()
 
 	Callbacks:Call("Overrides")
 	Callbacks:Call("Initialize")
@@ -547,8 +558,8 @@ function ScriptManager:GetAsyncWebResult(host, path, callback)
 
 	GetAsyncWebResult(host, self:__SafeLink(path), function(result)
 		if (result and (#result > 0)) then
-			if (host:equals("raw.github.com") or host:Equals("raw.githubusercontent")) then
-				if (not result:equals("Not Found")) then
+			if (host:Equals("raw.github.com") or host:Equals("raw.githubusercontent")) then
+				if (not result:Equals("Not Found")) then
 					callback(result:sub(1, #result - 1))
 				end
 			else
@@ -649,7 +660,7 @@ function DrawManager:__OnDraw()
 		return
 	end
 
-	--Callbacks:Call("Draw")
+	Callbacks:Call("Draw")
 
 end
 
@@ -904,6 +915,28 @@ end
 PriorityManager = PriorityManager()
 
 ---//==================================================\\---
+--|| > Player Class										||--
+---\===================================================//---
+
+class("Player")
+
+function Player:__init() end
+
+function Player:GetCooldownReduction()
+
+	return (myHero.cdr * -1)
+
+end
+
+function Player:GetLevel()
+
+	return myHero.level
+
+end
+
+Player = Player()
+
+---//==================================================\\---
 --|| > VisualDebugger Class								||--
 ---\===================================================//---
 
@@ -980,7 +1013,7 @@ function VisualDebugger:__OnDraw()
 	local size 	= self.__Config.Size
 	local color	= self.__Config.Color
 	
-	for name, group in pairs(self.Groups) do
+	for name, group in pairs(self.__Groups) do
 		local name = Format("Group{1}", name)
 		if (self.__Config[name].Enabled) then
 			DrawManager:DrawText(Format("---------- {1} ----------", group.Text), size, posX, posY, color)
@@ -1127,12 +1160,16 @@ end
 
 function SpellData:SetSkillshot(type, width, delay, speed, collision)
 
+	if (not __SpellData.Prediction) then
+		__SpellData.Prediction = VPrediction()
+	end
+
 	self.Width		= width or 0
 	self.Delay		= delay or 0
 	self.Speed		= speed or 0
 	self.Collision	= collision or false
 
-	self.__Base:SetSkillshot(__SpellData.Prediction, skillshotType, width, delay, speed, collision)
+	self.__Base:SetSkillshot(__SpellData.Prediction, type, width, delay, speed, collision)
 
 end
 
@@ -1297,7 +1334,7 @@ Callbacks:Bind("Overrides", function()
 			end
 			
 			config:Menu("General", "Settings: General")
-			if (keys) then
+			if ((keys == nil) or keys) then
 				config:Menu("Keys", "Settings: Keys")
 			end
 			config:Menu("Farm", "Settings: Farming")
@@ -1344,7 +1381,7 @@ Callbacks:Bind("Overrides", function()
 			config.Mastery.DevastatingStrikes	= 0
 			
 			if ((selector == nil) or selector) then
-				self.TS 		= TargetSelector(TARGET_LESS_CAST_PRIORITY, Player:GetRange(), DAMAGE_PHYSICAL, false)
+				self.TS 		= TargetSelector(TARGET_LESS_CAST_PRIORITY, self:GetMyRange(), DAMAGE_PHYSICAL, false)
 				config:addTS(self.TS)
 			else
 				self.NoSelector	= true
