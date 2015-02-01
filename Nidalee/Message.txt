@@ -1,0 +1,1 @@
+If your interested in writing your own scripts don't forget to check out my GodLib!
