@@ -22,10 +22,10 @@ GodLib				-- Holds main variables used to setup the script.
 			The filename where the current scripts version is stored.
 			
 			Example:
-				Current.version
+				GodLib.Update.Version = "Current.version"
 				
 			Example of file content:
-				GodLib.Update.Version = "0.01"
+				0.01
 		--]]
 		.Version
 		--[[
