@@ -62,7 +62,7 @@ GodLib.Print.Colors.Debug		= "81BEF7"										-- Changes the "Debug" message co
 
 -- Required libraries.
 GodLib.RequiredLibraries		= {												-- For the default loaded libraries please refer the forum thread.
-	--["SxOrbWalk"]				= "https://raw.githubusercontent.com/Superx321/BoL/master/common/SxOrbWalk.lua",
+	["SxOrbWalk"]				= "https://raw.githubusercontent.com/Superx321/BoL/master/common/SxOrbWalk.lua",
 }
 
 ---//==================================================\\---
