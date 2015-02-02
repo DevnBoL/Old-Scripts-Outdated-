@@ -5,7 +5,7 @@
 ---\===================================================//---
 
 	Library:		GodLib
-	Version:		1.04
+	Version:		1.05
 	Author:			Devn
 	
 	Forum Thread:	http://www.forum.botoflegends.com/
@@ -34,6 +34,9 @@
 	Version 1.04:
 		- Fixed ScriptStatus.
 		- Added Player class.
+		
+	Version 1.05:
+		- Added support for range changing spells.
 
 --]]
 
@@ -43,7 +46,7 @@
 
 GodLib					= {
 	__Library 			= {
-		Version			= "1.04",
+		Version			= "1.05",
 		Update			= {
 			Host		= "raw.github.com",
 			Path		= "DevnBoL/Scripts/master/GodLib",
@@ -815,7 +818,7 @@ function TickManager:LoadToMenu(config)
 	config:Separator()
 	
 	for name, data in pairs(self.__Callbacks) do
-		config:Slider(Format("Callback{1}", name), data.Title, data.TicksPerSecond, data.Default, 500)
+		config:Slider(Format("Callback{1}", name), data.Title, data.Default, 1, 500)
 	end
 	
 	config.Reset	= false
@@ -1154,7 +1157,25 @@ function SpellData:__init(key, range, name, id)
 	self.Name	= name
 	
 	self.__Id	= id or __SpellData.Ids[self.Key]
-	self.__Base	= Spell(self.Key, self.Range)
+	self.__Base	= Spell(self.Key, 0)
+	
+	self:SetRange(self:GetRange())
+
+end
+
+function SpellData:GetRange()
+
+	if (type(self.Range) == "function") then
+		return self.Range(myHero.level)
+	else
+		return self.Range
+	end
+
+end
+
+function SpellData:SetRange(range)
+
+	self.__Base:SetRange(range)
 
 end
 
@@ -1186,13 +1207,15 @@ function SpellData:IsReady()
 end
 
 function SpellData:InRange(target)
-
+	
+	self:SetRange(self:GetRange())
 	return self.__Base:IsInRange(target)
 
 end
 
 function SpellData:Cast(param1, param2)
-
+	
+	self:SetRange(self:GetRange())
 	return self.__Base:Cast(param1, param2)
 
 end
@@ -1204,13 +1227,15 @@ function SpellData:CastAt(position)
 end
 
 function SpellData:CastIfImmobile(target)
-
+	
+	self:SetRange(self:GetRange())
 	return self.__Base:CastIfImmobile(target)
 
 end
 
 function SpellData:GetPrediction(target)
-
+	
+	self:SetRange(self:GetRange())
 	return self.__Base:GetPrediction(target)
 
 end
