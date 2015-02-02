@@ -5,7 +5,7 @@
 ---\===================================================//---
 
 	Library:		GodLib
-	Version:		1.05
+	Version:		1.06
 	Author:			Devn
 	
 	Forum Thread:	http://www.forum.botoflegends.com/
@@ -37,6 +37,9 @@
 		
 	Version 1.05:
 		- Added support for range changing spells.
+		
+	Version 1.06:
+		- Added anti-gapcloser support to callbacks class.
 
 --]]
 
@@ -46,7 +49,7 @@
 
 GodLib					= {
 	__Library 			= {
-		Version			= "1.05",
+		Version			= "1.06",
 		Update			= {
 			Host		= "raw.github.com",
 			Path		= "DevnBoL/Scripts/master/GodLib",
@@ -125,6 +128,38 @@ AddLoadCallback(function()
 		["Debug"]	= GodLib.Print.Colors.Debug,
 	}
 
+	GapcloserSpells	= {
+		["AatroxQ"]              = "Aatrox",
+		["AkaliShadowDance"]     = "Akali",
+		["Headbutt"]             = "Alistar",
+		["FioraQ"]               = "Fiora",
+		["DianaTeleport"]        = "Diana",
+		["EliseSpiderQCast"]     = "Elise",
+		["FizzPiercingStrike"]   = "Fizz",
+		["GragasE"]              = "Gragas",
+		["HecarimUlt"]           = "Hecarim",
+		["JarvanIVDragonStrike"] = "JarvanIV",
+		["IreliaGatotsu"]        = "Irelia",
+		["JaxLeapStrike"]        = "Jax",
+		["KhazixE"]              = "Khazix",
+		["khazixelong"]          = "Khazix",
+		["LeblancSlide"]         = "LeBlanc",
+		["LeblancSlideM"]        = "LeBlanc",
+		["BlindMonkQTwo"]        = "LeeSin",
+		["LeonaZenithBlade"]     = "Leona",
+		["UFSlash"]              = "Malphite",
+		["Pantheon_LeapBash"]    = "Pantheon",
+		["PoppyHeroicCharge"]    = "Poppy",
+		["RenektonSliceAndDice"] = "Renekton",
+		["RivenTriCleave"]       = "Riven",
+		["SejuaniArcticAssault"] = "Sejuani",
+		["slashCast"]            = "Tryndamere",
+		["ViQ"]                  = "Vi",
+		["MonkeyKingNimbus"]     = "MonkeyKing",
+		["XenZhaoSweep"]         = "XinZhao",
+		["YasuoDashWrapper"]     = "Yasuo",
+}
+	
 end)
 
 ---//==================================================\\---
@@ -257,6 +292,16 @@ end
 function IsEnemy(unit)
 
 	return (not IsAlly(unit))
+
+end
+
+function IsEvading()
+
+	if (_G.Evadeee_Loaded and _G.Evading) then
+		return true
+	end
+	
+	return false
 
 end
 
@@ -637,8 +682,8 @@ function DrawManager:__LowFPSDrawCircle(x, y, z, range, color)
 	
 	if (OnScreen({ x = sPos.x, y = sPos.y }, { x = sPos.x, y = sPos.y })) then
 	
-		local width 		= self.Config.Width
-		local chordlength	= self.Config.Quality
+		local width 		= self.__Config.Width
+		local chordlength	= self.__Config.Quality
 		local quality		= math.max(8, math.round(180 / math.deg(math.asin(chordlength / (2 * range)))))
 		
 		quality 			= 2 * math.pi / quality
@@ -1176,6 +1221,8 @@ end
 function SpellData:SetRange(range)
 
 	self.__Base:SetRange(range)
+	
+	return self
 
 end
 
@@ -1191,12 +1238,23 @@ function SpellData:SetSkillshot(type, width, delay, speed, collision)
 	self.Collision	= collision or false
 
 	self.__Base:SetSkillshot(__SpellData.Prediction, type, width, delay, speed, collision)
+	
+	return self
+
+end
+
+function SpellData:SetAOE(use, radius, targets)
+
+	self.__Base:SetAOE(use, radius, targets)
+	
+	return self
 
 end
 
 function SpellData:SetSourcePosition(position)
 
 	self.__Base:SetSourcePosition(position)
+	return self
 
 end
 
@@ -1340,6 +1398,93 @@ Callbacks:Bind("Overrides", function()
 		
 		self.menu 	= config
 		STS_MENU 	= self.menu
+	
+	end
+	
+	function AntiGapcloser:__init()
+	
+		self.__ActiveSpells	= { }
+	
+	end
+	
+	function AntiGapcloser:__OnProcessSpell(unit, spell)
+	
+		if (not self.__Config.Enabled) then
+			return
+		end
+		
+		if (IsEnemy(unit) and GapcloserSpells[spell.name]) then
+			if (self.__Config[spell.name:gsub("_", "")]) then
+				local add 		= false
+				local startPos	= nil
+				local endPos	= nil
+				if (spell.target and spell.target.isMe) then
+					add			= true
+					startPos	= Vector(unit.visionPos)
+					endPos		= myHero
+				elseif (not spell.target) then
+					local endPos1	= (Vector(unit.visionPos) + 300 * (Vector(spell.endPos) - Vector(unit.visionPos))):normalized()
+					local endPos2	= (Vector(unit.visionPos) + 100 * (Vector(spell.endPos) - Vector(unit.visionPos))):normalized()
+					if ((GetDistance(myHero.visionPos, unit.visionPos) > GetDistance(myHero.visionPos, endPos1)) or (GetDistance(myHero.visionPos, unit.visionPos) > GetDistance(myHero.visionPos, endPos2))) then
+						add = true
+					end
+				end
+				if (add) then
+					local data	= {
+						unit		= unit,
+						spell		= spell.name,
+						startT		= GetTickCount(),
+						endT		= GetTickCount() + 1,
+						startPos	= startPos,
+						endPos		= endPos,
+					}
+					table.insert(self.__ActiveSpells, data)
+					Callbacks:Call("GapcloserSpell", data.unit, data)
+				end
+			end
+		end
+	
+	end
+	
+	function AntiGapcloser:__OnTick()
+	
+		for i = #self.__ActiveSpells, 1, -1 do
+			if ((self.__ActiveSpells[i].endT - GetTickCount()) > 0) then
+				Callbacks:Call("GapcloserSpell", self.__ActiveSpells[i].unit, self.__ActiveSpells[i])
+			else
+				table.remove(self.__ActiveSpells, i)
+			end
+		end
+	
+	end
+	
+	function AntiGapcloser:LoadToMenu(config)
+	
+		local spellAdded	= false
+		local charNames		= { }
+		
+		for _, enemy in ipairs(GetEnemyHeroes()) do
+			table.insert(charNames, enemy.charName)
+		end
+		
+		config:Toggle("Enabled", "Enabled", true)
+		config:Separator()
+		
+		for spellName, charName in pairs(GapcloserSpells) do
+			if (table.contains(charNames, charName)) then
+				config:Toggle(spellName:gsub("_", ""), Format("{1} - {2}", charName, spellName), true)
+				spellAdded = true
+			end
+		end
+	
+		if (not spellAdded) then
+			config:Note("No spell available to interrupt.")
+		end
+		
+		self.__Config		= config
+		
+		TickManager:Add("AntiGapcloser", "AntiGapcloser Tick Rate", 500, function() self:__OnTick() end)
+		Callbacks:Bind("ProcessSpell", function(unit, spell) self:__OnProcessSpell(unit, spell) end)
 	
 	end
 	
