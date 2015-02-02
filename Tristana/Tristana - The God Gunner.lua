@@ -5,8 +5,8 @@
 ---\===================================================//---
 
 	Script:			Tristana - The God Gunner
-	Version:		1.00
-	Script Date:	2015-02-01
+	Version:		1.01
+	Script Date:	2015-02-02
 	Author:			Devn
 
 ---//==================================================\\---
@@ -15,6 +15,9 @@
 
 	Version 1.00:
 		- Initial script release.
+		
+	Version 1.01:
+		- Added anti-gapcloser.
 
 --]]
 
@@ -55,9 +58,8 @@ GodLib.Update.Script			= "Tristana - The God Gunner"
 -- Script variables.
 GodLib.Script.Variables			= "TristanaGod"
 GodLib.Script.Name 				= "Tristana - The God Gunner"
-GodLib.Script.Version			= "1.00"
-GodLib.Script.Date				= "2015-02-01"
---GodLib.Script.Key				= "VILJJPJJIPN"
+GodLib.Script.Version			= "1.01"
+GodLib.Script.Date				= "2015-02-02"
 
 -- Required libraries.
 GodLib.RequiredLibraries		= {
@@ -90,6 +92,14 @@ Callbacks:Bind("Draw", function()
 
 end)
 
+Callbacks:Bind("GapcloserSpell", function(unit, data)
+
+	if (ValidTarget(unit) and Config.AntiGapcloser.UseR and Spells[_R]:IsReady()) then
+		Spells[_R]:Cast(unit)
+	end
+
+end)
+
 ---//==================================================\\---
 --|| > Script Setup										||--
 ---\===================================================//---
@@ -106,6 +116,7 @@ function SetupVariables()
 	
 	Config			= MenuConfig("TristanaGod", ScriptName)
 	Selector		= SimpleTS(STS_LESS_CAST)
+	AntiGapcloser	= AntiGapcloser()
 	
 	TickManager:Add("Combo", "Combo Mode", 500, function() OnComboMode(Config.Combo) end)
 	TickManager:Add("Harass", "Harass Mode", 500, function() OnHarassMode(Config.Harass) end)
@@ -139,6 +150,7 @@ function SetupConfig()
 	Config:Menu("Combo", "Settings: Combo Mode")
 	Config:Menu("Harass", "Settings: Harass Mode")
 	Config:Menu("Killstealing", "Settings: Killstealing")
+	Config:Menu("AntiGapcloser", "Settings: Anti-Gapcloser")
 	Config:Menu("Drawing", "Settings: Drawing")
 	Config:Menu("TickManager", "Settings: Tick Manager")
 	Config:Separator()
@@ -151,6 +163,7 @@ function SetupConfig()
 	SetupConfig_Combo(Config.Combo)
 	SetupConfig_Harass(Config.Harass)
 	SetupConfig_Killstealing(Config.Killstealing)
+	SetupConfig_AntiGapcloser(Config.AntiGapcloser)
 	SetupConfig_Drawing(Config.Drawing)
 	TickManager:LoadToMenu(Config.TickManager)
 	
@@ -190,6 +203,14 @@ end
 function SetupConfig_Killstealing(config)
 
 	config:Toggle("Enable", "Enable Killstealing", true)
+	config:Separator()
+	config:Toggle("UseR", Format("Use {1} (R)", Spells[_R].Name), true)
+
+end
+
+function SetupConfig_AntiGapcloser(config)
+
+	AntiGapcloser:LoadToMenu(config)
 	config:Separator()
 	config:Toggle("UseR", Format("Use {1} (R)", Spells[_R].Name), true)
 
