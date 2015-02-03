@@ -99,10 +99,17 @@ end)
 
 Callbacks:Bind("AfterAttack", function(target)
 
-	if (ValidTarget(target) and Spells[_E]:IsReady() and (Config.Combo.E.Use > 1)) then
-		if ((CurrentTarget == target) or (Config.Combo.E.Use == 3)) then
-			Spells[_E]:Cast()
-			SxOrb:MyAttack(target)
+	if (ValidTarget(target) and Spells[_E]:IsReady()) then
+		if (Config.Combo.Active) then
+			if ((Config.Combo.E.Use > 1) and (CurrentTarget == target) or (Config.Combo.E.Use == 3)) then
+				Spells[_E]:Cast()
+				SxOrb:MyAttack(target)
+			end
+		elseif (Config.Harass.Active) then
+			if ((Config.Harass.E.Use > 1) and (CurrentTarget == target) or (Config.Harass.E.Use == 3)) then
+				Spells[_E]:Cast()
+				SxOrb:MyAttack(target)
+			end
 		end
 	end
 
