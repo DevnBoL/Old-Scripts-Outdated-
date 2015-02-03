@@ -5,7 +5,7 @@
 ---\===================================================//---
 
 	Library:		GodLib
-	Version:		1.06
+	Version:		1.07
 	Author:			Devn
 	
 	Forum Thread:	http://www.forum.botoflegends.com/
@@ -40,6 +40,13 @@
 		
 	Version 1.06:
 		- Added anti-gapcloser support to callbacks class.
+		- Added "IsEvading()" function for Evadee.
+		
+	Version 1.07:
+		- Added more global functions.
+		- Added evading support for FGE.
+		- Added "Player.IsAttacking" variable to avoid cancelling autos (requires SxOrb).
+		- Added SAC detection to SxOrbWalk.
 
 --]]
 
@@ -49,7 +56,7 @@
 
 GodLib					= {
 	__Library 			= {
-		Version			= "1.06",
+		Version			= "1.07",
 		Update			= {
 			Host		= "raw.github.com",
 			Path		= "DevnBoL/Scripts/master/GodLib",
@@ -186,6 +193,10 @@ end
 
 function IsValid(target, range, from)
 
+	if (not target) then
+		return false
+	end
+
 	from = from or myHero
 
 	if (ValidTarget(target)) then
@@ -262,17 +273,25 @@ function IsFleeing(unit, range, from, distance)
 
 end
 
-function IsFacing(unit, from, distance)
+function IsFacing(unit, from)
 
-	local from 	= from or myHero
+	if (not unit) then
+		return false
+	end
+
+	from			= from or myHero
 	
-	local pos1	= Vector(unit.x, unit.z)
-	local pos2	= Vector(unit.x, unit.z)
+	local facing	= false
+	local waypoints	= GetWayPoints(unit)
+	local path		= waypoints[#waypoints]
 	
-	pos1		= pos1 - pos2:normalized()
-	pos1		= pos2 + pos1 * GetDistance(from, unit)
+	if (path and (GetDistance(path, from) < GetDistance(unit, from))) then
+		facing = true
+	else
+		facing = false
+	end
 	
-	return (GetDistance(from, { x = pos1.x, z = pos1.y }) <= (distance or 90000))
+	return facing
 
 end
 
@@ -297,11 +316,50 @@ end
 
 function IsEvading()
 
+	-- Evadee
 	if (_G.Evadeee_Loaded and _G.Evading) then
 		return true
 	end
 	
+	-- FGE
+	if (_G.evade) then
+		return
+	end
+	
 	return false
+
+end
+
+function GetAllHeroes()
+
+	local heroes = { }
+	
+	for i = 1, heroManager.iCount do
+        table.insert(heroes, heroManager:GetHero(i))
+	end
+	
+	return heroes
+
+end
+
+function GetWayPoints(unit)
+
+	if (not unit) then
+		return { }
+	end
+	
+	local waypoints	= { unit }
+	
+	if (unit.hasMovePath) then
+		for i = unit.pathIndex, unit.pathCount do
+			local path = unit:GetPath(i)
+			if (path) then
+				waypoints[#waypoints + 1] = path
+			end
+		end
+	end
+	
+	return waypoints
 
 end
 
@@ -575,12 +633,27 @@ function ScriptManager:__SetupScriptStatus()
 
 end
 
+function ScriptManager:__CheckForSAC()
+
+	if (_G.AutoCarry) then
+		FoundSAC = true
+		Callbacks:Call("FoundSAC")
+	elseif (_G.Reborn_Loaded) then
+		DelayAction(function()
+			self:__CheckForSAC()
+		end, 5)
+	end
+
+end
+
 function ScriptManager:__LoadScript()
 
 	self:__SetupScriptStatus()
 
 	Callbacks:Call("Overrides")
 	Callbacks:Call("Initialize")
+	
+	self:__CheckForSAC()
 
 end
 
@@ -704,7 +777,7 @@ end
 
 function DrawManager:__OnDraw()
 
-	if (not self.__Config or self.__ConfigDisabled) then
+	if (not self.__Config or self.__Config.Disabled) then
 		return
 	end
 
@@ -783,6 +856,15 @@ function DrawManager:DrawTextWithBorder(text, size, x, y, color, border)
 	self:DrawText(text, size, x, y + 1, border)
 	
 	self:DrawText(text, size, x, y, color)
+
+end
+
+function DrawManager:DrawLine(points, width, color)
+
+	local width	= width or 1
+	local color	= (color and self:__ParseColor(color)) or ARGB(255, 0, 0, 0)
+
+	DrawLines2(points, width, color)
 
 end
 
@@ -968,7 +1050,24 @@ PriorityManager = PriorityManager()
 
 class("Player")
 
-function Player:__init() end
+function Player:__init()
+
+	Callbacks:Bind("Initialize", function() self:__OnInitialize() end)
+
+end
+
+function Player:__OnInitialize()
+
+	if (SxOrb) then
+	
+		self.IsAttacking = false
+		
+		Callbacks:Bind("Attack", function() self.IsAttacking = true end)
+		Callbacks:Bind("AfterAttack", function() self.IsAttacking = false end)
+		
+	end
+
+end
 
 function Player:GetCooldownReduction()
 
@@ -1197,12 +1296,17 @@ class("SpellData")
 
 function SpellData:__init(key, range, name, id)
 
-	self.Key	= key
-	self.Range	= range or 0
-	self.Name	= name
+	self.Key		= key
+	self.Range		= range or 0
+	self.Name		= name
 	
-	self.__Id	= id or __SpellData.Ids[self.Key]
-	self.__Base	= Spell(self.Key, 0)
+	self.Width		= 0
+	self.Delay		= 0
+	self.Speed		= 0
+	self.Collision	= false
+	
+	self.__Id		= id or __SpellData.Ids[self.Key]
+	self.__Base		= Spell(self.Key, 0)
 	
 	self:SetRange(self:GetRange())
 
@@ -1212,9 +1316,17 @@ function SpellData:GetRange()
 
 	if (type(self.Range) == "function") then
 		return self.Range(myHero.level)
+	elseif (type(self.Range) == "table") then
+		return self.Range[myHero.level]
 	else
 		return self.Range
 	end
+
+end
+
+function SpellData:GetMaxRange()
+
+	return self:GetRange() + self.Width
 
 end
 
@@ -1266,7 +1378,7 @@ end
 
 function SpellData:InRange(target)
 	
-	self:SetRange(self:GetRange())
+	self:SetRange(self:GetMaxRange())
 	return self.__Base:IsInRange(target)
 
 end
@@ -1351,6 +1463,18 @@ end
 ---\===================================================//---
 
 Callbacks:Bind("Overrides", function()
+
+	function OnGainBuff(unit, buff)
+	
+		Callbacks:Call("GainBuff", unit, buff)
+	
+	end
+	
+	function OnLoseBuff(unit, buff)
+	
+		Callbacks:Call("LoseBuff", unit, buff)
+	
+	end
 
 	function SimpleTS:IsValid(target, range, _)
 	
@@ -1594,8 +1718,23 @@ Callbacks:Bind("Overrides", function()
 				Callbacks:Bind("DeleteObj", function(object)
 					self:OnDeleteObj(object)
 				end)
+				Callbacks:Bind("FoundSAC", function()
+					self.SxOrbMenu.General.Enabled = false
+					table.insert(self.SxOrbMenu.General._param, 2, {
+						var		= "nil",
+						text	= "Note: SAC has been found!",
+						pType	= SCRIPT_PARAM_INFO,
+					})
+					PrintLocal("Sida's Auto Carry found! Disabled SxOrbWalk.")
+				end)
 			end
 
+		end
+		
+		function SxOrbWalk:GetMyRange()
+		
+			return myHero.range + myHero.boundingRadius
+		  
 		end
 		
 	end
