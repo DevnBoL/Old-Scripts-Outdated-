@@ -5,7 +5,7 @@
 ---\===================================================//---
 
 	Script:			Blitzcrank - The Great Golem God
-	Version:		1.00
+	Version:		1.01
 	Script Date:	2015-02-03
 	Author:			Devn
 
@@ -15,6 +15,9 @@
 
 	Version 1.00:
 		- Initial script release.
+		
+	Version 1.01:
+		- Fixed Q skillshot for collision.
 
 --]]
 
@@ -45,7 +48,7 @@ GodLib.Update.Script		= "Blitzcrank - The Great Golem God.lua"
 -- Script variables.
 GodLib.Script.Variables		= "BlitzcrankGod"
 GodLib.Script.Name 			= "Blitzcrank - The Great Golem God"
-GodLib.Script.Version		= "1.00"
+GodLib.Script.Version		= "1.01"
 GodLib.Script.Date			= "2015-02-03"
 
 -- Required libraries.
@@ -124,7 +127,7 @@ function SetupVariables()
 	Selector		= SimpleTS(STS_LESS_CAST)
 	Interrupter		= Interrupter()
 	
-	Spells[_Q]:SetSkillshot(SKILLSHOT_LINEAR, 70, 0.25, 1800, false):SetAOE(true)
+	Spells[_Q]:SetSkillshot(SKILLSHOT_LINEAR, 70, 0.25, 1800, true):SetAOE(true)
 	
 	TickManager:Add("Combo", "Combo Mode", 500, function() OnComboMode(Config.Combo) end)
 	TickManager:Add("Harass", "Harass Mode", 500, function() OnHarassMode(Config.Harass) end)
@@ -204,7 +207,7 @@ function SetupConfig_Combo(config)
 	config.Q:Slider("MaxRange", "Maximum Distance to Grab", Spells[_Q].Range, 0, Spells[_Q].Range)
 	config.Q:Separator()
 	for _, enemy in ipairs(GetEnemyHeroes()) do
-		config.Q:Toggle(Format("Ignore{1}", enemy.hash), Format("Don't Grab {1}", enemy.charName), (PriorityManager:GetRecommendedPriority(enemy) < 3))
+		config.Q:Toggle(Format("Ignore{1}", enemy.charName), Format("Don't Grab {1}", enemy.charName), (PriorityManager:GetRecommendedPriority(enemy) < 3))
 	end
 	config.Q:Separator()
 	config.Q:Slider("IgnoreRange", "Range to Check for Grabable", 1500, 0, 2000)
@@ -245,7 +248,7 @@ function SetupConfig_Harass(config)
 	config.Q:Slider("MaxRange", "Maximum Distance to Grab", Spells[_Q].Range, 0, Spells[_Q].Range)
 	config.Q:Separator()
 	for _, enemy in ipairs(GetEnemyHeroes()) do
-		config.Q:Toggle(Format("Ignore{1}", enemy.hash), Format("Don't Grab {1}", enemy.charName), (PriorityManager:GetRecommendedPriority(enemy) < 4))
+		config.Q:Toggle(Format("Ignore{1}", enemy.charName), Format("Don't Grab {1}", enemy.charName), (PriorityManager:GetRecommendedPriority(enemy) < 4))
 	end
 	config.Q:Separator()
 	config.Q:Slider("IgnoreRange", "Range to Grab All Targets", 1500, 0, 2000)
@@ -315,10 +318,8 @@ function OnComboMode(config)
 		if (not InRange(CurrentTarget, config.Q.MinRange) and InRange(CurrentTarget, config.Q.MaxRange)) then
 			if (config.Q[Format("Ignore{1}", CurrentTarget.hash)]) then
 				if (config.Q.IgnoreToggle) then
-					print("checking if grabable target within: "..config.Q.IgnoreRange)
 					local target = Selector:GetTarget(config.Q.IgnoreRange)
 					if (not target or (target == CurrentTarget)) then
-						print("no grabable target")
 						Spells[_Q]:Cast(CurrentTarget)
 					end
 				end
