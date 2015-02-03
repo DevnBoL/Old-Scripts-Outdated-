@@ -5,7 +5,7 @@
 ---\===================================================//---
 
 	Library:		GodLib
-	Version:		1.07
+	Version:		1.08
 	Author:			Devn
 	
 	Forum Thread:	http://www.forum.botoflegends.com/
@@ -47,6 +47,10 @@
 		- Added evading support for FGE.
 		- Added "Player.IsAttacking" variable to avoid cancelling autos (requires SxOrb).
 		- Added SAC detection to SxOrbWalk.
+		
+	Version 1.08:
+		- Added auto-interrupter support to callbacks class.
+		- Added "GetAlliesInRange(range, from)" function.
 
 --]]
 
@@ -56,7 +60,7 @@
 
 GodLib					= {
 	__Library 			= {
-		Version			= "1.07",
+		Version			= "1.08",
 		Update			= {
 			Host		= "raw.github.com",
 			Path		= "DevnBoL/Scripts/master/GodLib",
@@ -118,24 +122,24 @@ end)
 
 AddLoadCallback(function()
 
-	__SpellData		= {
-		Prediction	= nil,
-		Ids			= {
-			[_Q]	= "Q",
-			[_W]	= "W",
-			[_E]	= "E",
-			[_R]	= "R",
+	__SpellData			= {
+		Prediction		= nil,
+		Ids				= {
+			[_Q]		= "Q",
+			[_W]		= "W",
+			[_E]		= "E",
+			[_R]		= "R",
 		}
 	}
 
-	MessageType		= {
-		["Info"]	= GodLib.Print.Colors.Info,
-		["Warning"]	= GodLib.Print.Colors.Warning,
-		["Error"]	= GodLib.Print.Colors.Error,
-		["Debug"]	= GodLib.Print.Colors.Debug,
+	MessageType			= {
+		["Info"]		= GodLib.Print.Colors.Info,
+		["Warning"]		= GodLib.Print.Colors.Warning,
+		["Error"]		= GodLib.Print.Colors.Error,
+		["Debug"]		= GodLib.Print.Colors.Debug,
 	}
 
-	GapcloserSpells	= {
+	GapcloserSpells		= {
 		["AatroxQ"]              = "Aatrox",
 		["AkaliShadowDance"]     = "Akali",
 		["Headbutt"]             = "Alistar",
@@ -166,6 +170,22 @@ AddLoadCallback(function()
 		["XenZhaoSweep"]         = "XinZhao",
 		["YasuoDashWrapper"]     = "Yasuo",
 }
+	
+	InterruptableSpells	= {
+		["KatarinaR"]					= { charName = "Katarina",		DangerLevel = 5, MaxDuration = 2.5, CanMove = false },
+		["Meditate"]					= { charName = "MasterYi",		DangerLevel = 1, MaxDuration = 2.5, CanMove = false },
+		["Drain"]						= { charName = "FiddleSticks", 	DangerLevel = 3, MaxDuration = 2.5, CanMove = false },
+		["Crowstorm"]					= { charName = "FiddleSticks",	DangerLevel = 5, MaxDuration = 2.5, CanMove = false },
+		["GalioIdolOfDurand"]			= { charName = "Galio",			DangerLevel = 5, MaxDuration = 2.5, CanMove = false },
+		["MissFortuneBulletTime"]		= { charName = "MissFortune",	DangerLevel = 5, MaxDuration = 2.5, CanMove = false },
+		["VelkozR"]						= { charName = "Velkoz",		DangerLevel = 5, MaxDuration = 2.5, CanMove = false },
+		["InfiniteDuress"]				= { charName = "Warwick",		DangerLevel = 5, MaxDuration = 2.5, CanMove = false },
+		["AbsoluteZero"]				= { charName = "Nunu",			DangerLevel = 4, MaxDuration = 2.5, CanMove = false },
+		["ShenStandUnited"]				= { charName = "Shen",			DangerLevel = 3, MaxDuration = 2.5, CanMove = false },
+		["FallenOne"]					= { charName = "Karthus",		DangerLevel = 5, MaxDuration = 2.5, CanMove = false },
+		["AlZaharNetherGrasp"]			= { charName = "Malzahar",		DangerLevel = 5, MaxDuration = 2.5, CanMove = false },
+		["Pantheon_GrandSkyfall_Jump"]	= { charName = "Pantheon",		DangerLevel = 5, MaxDuration = 2.5, CanMove = false },
+	}
 	
 end)
 
@@ -245,7 +265,24 @@ function GetEnemiesInRange(range, from)
 
 end
 
+function GetAlliesInRange(range, from)
+
+	from			= from or myHero
+	local allies 	= { }
+	
+	for _, ally in ipairs(GetAllyHeroes()) do
+		if (InRange(ally, range, from)) then
+			table.insert(allies, ally)
+		end
+	end
+	
+	return allies
+
+end
+
 function InRange(unit, range, from)
+
+	from = from or myHero
 
 	return (GetDistance(unit, from) <= range)
 
@@ -260,10 +297,10 @@ end
 
 function IsFleeing(unit, range, from, distance)
 
-	from 		= from or myHero
-	distance	= distance or 0
+	from 			= from or myHero
+	distance		= distance or 0
 
-	local position = Prediction:GetPredictedPos(unit, 0.1)
+	local position	= Prediction:GetPredictedPos(unit, 0.1)
 	
 	if (position and (GetDistance(position, from) > (GetDistance(unit, from) + distance)) and (GetDistance(unit, from) >= range)) then
 		return true
@@ -1612,6 +1649,76 @@ Callbacks:Bind("Overrides", function()
 	
 	end
 	
+	function Interrupter:__init()
+	
+		self.__ActiveSpells	= { }
+	
+	end
+	
+	function Interrupter:__OnProcessSpell(unit, spell)
+	
+		if (not self.__Config.Enabled) then
+			return
+		end
+		
+		if (IsEnemy(unit) and InterruptableSpells[spell.name]) then
+			local spellData = InterruptableSpells[spell.name]
+			if (self.__Config[spell.name:gsub("_", "")]) then
+				local data		= {
+					unit		= unit,
+					DangerLevel	= spellData.DangerLevel,
+					endT		= GetTickCount() + spellData.MaxDuration,
+					CanMove		= spellData.CanMove,
+				}
+				table.insert(self.__ActiveSpells, data)
+				Callbacks:Call("InterruptableSpell", data.unit, data)
+			end
+		end
+	
+	end
+	
+	function Interrupter:__OnTick()
+	
+		for i = #self.__ActiveSpells, 1, -1 do
+			if (self.__ActiveSpells[i].endT - GetTickCount() > 0) then
+				Callbacks:Call("InterruptableSpell", data.unit, data)
+			else
+				table.remove(self.__ActiveSpells, i)
+			end
+		end
+	
+	end
+	
+	function Interrupter:LoadToMenu(config)
+	
+		local spellAdded	= false
+		local charNames		= { }
+		
+		for _, enemy in ipairs(GetEnemyHeroes()) do
+			table.insert(charNames, enemy.charName)
+		end
+		
+		config:Toggle("Enabled", "Enabled", true)
+		config:Separator()
+		
+		for spellName, data in pairs(InterruptableSpells) do
+			if (table.contains(charNames, data.charName)) then
+				config:Toggle(spellName:gsub("_", ""), Format("{1} - {2}", data.charName, spellName), true)
+				spellAdded = true
+			end
+		end
+	
+		if (not spellAdded) then
+			config:Note("No spell available to interrupt.")
+		end
+		
+		self.__Config		= config
+		
+		TickManager:Add("Interrupter", "Interrupter Tick Rate", 500, function() self:__OnTick() end)
+		Callbacks:Bind("ProcessSpell", function(unit, spell) self:__OnProcessSpell(unit, spell) end)
+	
+	end
+	
 	if (SxOrb) then
 
 		function SxOrbWalk:LoadToMenu(config, keys, selector)
@@ -1733,7 +1840,7 @@ Callbacks:Bind("Overrides", function()
 		
 		function SxOrbWalk:GetMyRange()
 		
-			return myHero.range + myHero.boundingRadius
+			return myHero.range + GetDistance(myHero.minBBox) - 20
 		  
 		end
 		
