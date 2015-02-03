@@ -5,8 +5,8 @@
 ---\===================================================//---
 
 	Script:			Tristana - The God Gunner
-	Version:		1.01
-	Script Date:	2015-02-02
+	Version:		1.02
+	Script Date:	2015-02-03
 	Author:			Devn
 
 ---//==================================================\\---
@@ -18,17 +18,10 @@
 		
 	Version 1.01:
 		- Added anti-gapcloser.
+		
+	Version 1.02:
+		- Added auto-interrupter.
 
---]]
-
---[[ Temporary Anti-AFK (Please remove before release)
-function OnTick()
-	if (not _ANTI_AFK or (_ANTI_AFK <= GetGameTimer())) then
-		_ANTI_AFK = GetGameTimer() + 40
-		local position = myHero + (Vector(mousePos) - myHero):normalized() * 250
-		myHero:MoveTo(position.x, position.z)
-	end
-end
 --]]
 
 ---//==================================================\\---
@@ -53,13 +46,13 @@ if (not GodLib) then return end
 GodLib.Update.Host				= "raw.github.com"
 GodLib.Update.Path				= "DevnBoL/Scripts/master/Tristana"
 GodLib.Update.Version			= "Current.version"
-GodLib.Update.Script			= "Tristana - The God Gunner"
+GodLib.Update.Script			= "Tristana - The God Gunner.lua"
 
 -- Script variables.
 GodLib.Script.Variables			= "TristanaGod"
 GodLib.Script.Name 				= "Tristana - The God Gunner"
-GodLib.Script.Version			= "1.01"
-GodLib.Script.Date				= "2015-02-02"
+GodLib.Script.Version			= "1.02"
+GodLib.Script.Date				= "2015-02-03"
 
 -- Required libraries.
 GodLib.RequiredLibraries		= {
@@ -100,6 +93,14 @@ Callbacks:Bind("GapcloserSpell", function(unit, data)
 
 end)
 
+Callbacks:Bind("InterruptableSpell", function(unit, data)
+
+	if (ValidTarget(unit) and Spells[_R]:IsReady() and Config.Interrupter.UseR and Spells[_R]:InRange(unit) and (data.DangerLevel >= Config.Interrupter.MinDangerLevelR)) then
+		Spells[_R]:Cast()
+	end
+
+end)
+
 ---//==================================================\\---
 --|| > Script Setup										||--
 ---\===================================================//---
@@ -117,6 +118,7 @@ function SetupVariables()
 	Config			= MenuConfig("TristanaGod", ScriptName)
 	Selector		= SimpleTS(STS_LESS_CAST)
 	AntiGapcloser	= AntiGapcloser()
+	Interrupter		= Interrupter()
 	
 	TickManager:Add("Combo", "Combo Mode", 500, function() OnComboMode(Config.Combo) end)
 	TickManager:Add("Harass", "Harass Mode", 500, function() OnHarassMode(Config.Harass) end)
@@ -151,6 +153,7 @@ function SetupConfig()
 	Config:Menu("Harass", "Settings: Harass Mode")
 	Config:Menu("Killstealing", "Settings: Killstealing")
 	Config:Menu("AntiGapcloser", "Settings: Anti-Gapcloser")
+	Config:Menu("Interrupter", "Settings: Auto-Interrupter")
 	Config:Menu("Drawing", "Settings: Drawing")
 	Config:Menu("TickManager", "Settings: Tick Manager")
 	Config:Separator()
@@ -164,6 +167,7 @@ function SetupConfig()
 	SetupConfig_Harass(Config.Harass)
 	SetupConfig_Killstealing(Config.Killstealing)
 	SetupConfig_AntiGapcloser(Config.AntiGapcloser)
+	SetupConfig_Interrupter(Config.Interrupter)
 	SetupConfig_Drawing(Config.Drawing)
 	TickManager:LoadToMenu(Config.TickManager)
 	
@@ -213,6 +217,15 @@ function SetupConfig_AntiGapcloser(config)
 	AntiGapcloser:LoadToMenu(config)
 	config:Separator()
 	config:Toggle("UseR", Format("Use {1} (R)", Spells[_R].Name), true)
+
+end
+
+function SetupConfig_Interrupter(config)
+
+	Interrupter:LoadToMenu(config)
+	config:Separator()
+	config:Toggle("UseR", Format("Use {1} (R)", Spells[_R].Name), true)
+	config:Slider("MinDangerLevelR", "Minimum Danger Level", 4, 1, 5)
 
 end
 
