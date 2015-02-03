@@ -5,7 +5,7 @@
 ---\===================================================//---
 
 	Library:		GodLib
-	Version:		1.08
+	Version:		1.09
 	Author:			Devn
 	
 	Forum Thread:	http://www.forum.botoflegends.com/
@@ -51,6 +51,9 @@
 	Version 1.08:
 		- Added auto-interrupter support to callbacks class.
 		- Added "GetAlliesInRange(range, from)" function.
+		
+	Version 1.09:
+		- Fixed a small bug causing SpellData:InRange(unit) to include the spells width on all spells (only circular now).
 
 --]]
 
@@ -60,7 +63,7 @@
 
 GodLib					= {
 	__Library 			= {
-		Version			= "1.08",
+		Version			= "1.09",
 		Update			= {
 			Host		= "raw.github.com",
 			Path		= "DevnBoL/Scripts/master/GodLib",
@@ -1337,6 +1340,7 @@ function SpellData:__init(key, range, name, id)
 	self.Range		= range or 0
 	self.Name		= name
 	
+	self.Type		= nil
 	self.Width		= 0
 	self.Delay		= 0
 	self.Speed		= 0
@@ -1363,7 +1367,11 @@ end
 
 function SpellData:GetMaxRange()
 
-	return self:GetRange() + self.Width
+	if (self.Type == SKILLSHOT_CIRCULAR) then
+		return self:GetRange() + self.Width
+	else
+		return self:GetRange()
+	end
 
 end
 
@@ -1381,6 +1389,7 @@ function SpellData:SetSkillshot(type, width, delay, speed, collision)
 		__SpellData.Prediction = VPrediction()
 	end
 
+	self.Type		= type
 	self.Width		= width or 0
 	self.Delay		= delay or 0
 	self.Speed		= speed or 0
@@ -1543,10 +1552,10 @@ Callbacks:Bind("Overrides", function()
 		local oneEnemy 	= false
 		for _, enemy in ipairs(GetEnemyHeroes()) do
 			oneEnemy = true
-			config.STS:Slider(enemy.hash, enemy.charName, 1, 1, 5)
+			config.STS:Slider(enemy.charName, enemy.charName, 1, 1, 5)
 			DelayAction(function()
 				if (GetSave(ScriptName).RecommendedPriorities) then
-					config.STS[enemy.hash] = PriorityManager:GetRecommendedPriority(enemy)
+					config.STS[enemy.charName] = PriorityManager:GetRecommendedPriority(enemy)
 				end
 			end)
 		end
@@ -1680,7 +1689,8 @@ Callbacks:Bind("Overrides", function()
 	function Interrupter:__OnTick()
 	
 		for i = #self.__ActiveSpells, 1, -1 do
-			if (self.__ActiveSpells[i].endT - GetTickCount() > 0) then
+			local data = self.__ActiveSpells[i]
+			if (data.endT - GetTickCount() > 0) then
 				Callbacks:Call("InterruptableSpell", data.unit, data)
 			else
 				table.remove(self.__ActiveSpells, i)
