@@ -66,7 +66,7 @@
 
 GodLib					= {
 	__Library 			= {
-		Version			= "1.09",
+		Version			= "1.10",
 		Update			= {
 			Host		= "raw.github.com",
 			Path		= "DevnBoL/Scripts/master/GodLib",
