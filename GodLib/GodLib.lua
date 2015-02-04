@@ -5,7 +5,7 @@
 ---\===================================================//---
 
 	Library:		GodLib
-	Version:		1.09
+	Version:		1.10
 	Author:			Devn
 	
 	Forum Thread:	http://www.forum.botoflegends.com/
@@ -55,6 +55,9 @@
 	Version 1.09:
 		- Fixed a small bug causing SpellData:InRange(unit) to include the spells width on all spells (only circular now).
 
+	Version 1.10:
+		- Added functions to disable/enable attack/movement (supports SxOrb and SAC).
+		
 --]]
 
 ---//==================================================\\---
@@ -321,17 +324,14 @@ function IsFacing(unit, from)
 
 	from			= from or myHero
 	
-	local facing	= false
 	local waypoints	= GetWayPoints(unit)
 	local path		= waypoints[#waypoints]
 	
 	if (path and (GetDistance(path, from) < GetDistance(unit, from))) then
-		facing = true
-	else
-		facing = false
+		return true
 	end
 	
-	return facing
+	return false
 
 end
 
@@ -908,6 +908,20 @@ function DrawManager:DrawLine(points, width, color)
 
 end
 
+function DrawManager:DrawCircleMinimap(x, y, z, radius, color, width, quality)
+
+	color = self:__ParseColor(color)
+	
+	DrawCircleMinimap(x, y, z, radius, width, color, quality)
+
+end
+
+function DrawManager:DrawCircleMinimapAt(vector, radius, color, width, quality)
+
+	self:DrawCircleMinimap(vector.x, vector.y, vector.z, radius, color, width, quality)
+
+end
+
 DrawManager = DrawManager()
 
 ---//==================================================\\---
@@ -1118,6 +1132,54 @@ end
 function Player:GetLevel()
 
 	return myHero.level
+
+end
+
+function Player:DisableAttacks()
+
+	if (SxOrb) then
+		SxOrb:DisableAttacks()
+	end
+	
+	if (FoundSAC) then
+		_G.AutoCarry.MyHero:AttacksEnabled(false)
+	end
+
+end
+
+function Player:EnableAttacks()
+
+	if (SxOrb) then
+		SxOrb:EnableAttacks()
+	end
+
+	if (FoundSAC) then
+		_G.AutoCarry.MyHero:AttacksEnabled(true)
+	end
+
+end
+
+function Player:DisableMovement()
+
+	if (SxOrb) then
+		SxOrb:DisableMove()
+	end
+
+	if (FoundSAC) then
+		_G.AutoCarry.MyHero:MovementEnabled(false)
+	end
+
+end
+
+function Player:EnableMovement()
+
+	if (SxOrb) then
+		SxOrb:EnableMove()
+	end
+	
+	if (FoundSAC) then
+		_G.AutoCarry.MyHero:MovementEnabled(true)
+	end
 
 end
 
