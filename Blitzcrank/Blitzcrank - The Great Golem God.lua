@@ -5,8 +5,8 @@
 ---\===================================================//---
 
 	Script:			Blitzcrank - The Great Golem God
-	Version:		1.01
-	Script Date:	2015-02-03
+	Version:		1.02
+	Script Date:	2015-02-04
 	Author:			Devn
 
 ---//==================================================\\---
@@ -18,6 +18,9 @@
 		
 	Version 1.01:
 		- Fixed Q skillshot for collision.
+		
+	Version 1.02:
+		- Fixed Q skillshot width.
 
 --]]
 
@@ -48,8 +51,8 @@ GodLib.Update.Script		= "Blitzcrank - The Great Golem God.lua"
 -- Script variables.
 GodLib.Script.Variables		= "BlitzcrankGod"
 GodLib.Script.Name 			= "Blitzcrank - The Great Golem God"
-GodLib.Script.Version		= "1.01"
-GodLib.Script.Date			= "2015-02-03"
+GodLib.Script.Version		= "1.02"
+GodLib.Script.Date			= "2015-02-04"
 
 -- Required libraries.
 GodLib.RequiredLibraries	= {
@@ -99,17 +102,10 @@ end)
 
 Callbacks:Bind("AfterAttack", function(target)
 
-	if (ValidTarget(target) and Spells[_E]:IsReady()) then
-		if (Config.Combo.Active) then
-			if ((Config.Combo.E.Use > 1) and (CurrentTarget == target) or (Config.Combo.E.Use == 3)) then
-				Spells[_E]:Cast()
-				SxOrb:MyAttack(target)
-			end
-		elseif (Config.Harass.Active) then
-			if ((Config.Harass.E.Use > 1) and (CurrentTarget == target) or (Config.Harass.E.Use == 3)) then
-				Spells[_E]:Cast()
-				SxOrb:MyAttack(target)
-			end
+	if (ValidTarget(target) and Spells[_E]:IsReady() and (Config.Combo.E.Use > 1)) then
+		if ((CurrentTarget == target) or (Config.Combo.E.Use == 3)) then
+			Spells[_E]:Cast()
+			SxOrb:MyAttack(target)
 		end
 	end
 
@@ -131,10 +127,10 @@ function SetupVariables()
 	CurrentTarget	= nil
 	
 	Config			= MenuConfig("BlitzcrankGod", ScriptName)
-	Selector		= SimpleTS(STS_LESS_CAST)
+	Selector		= SimpleTS(STS_LESS_CAST_PHYSICAL)
 	Interrupter		= Interrupter()
 	
-	Spells[_Q]:SetSkillshot(SKILLSHOT_LINEAR, 70, 0.25, 1800, true):SetAOE(true)
+	Spells[_Q]:SetSkillshot(SKILLSHOT_LINEAR, 80, 0.25, 1800, true)
 	
 	TickManager:Add("Combo", "Combo Mode", 500, function() OnComboMode(Config.Combo) end)
 	TickManager:Add("Harass", "Harass Mode", 500, function() OnHarassMode(Config.Harass) end)
