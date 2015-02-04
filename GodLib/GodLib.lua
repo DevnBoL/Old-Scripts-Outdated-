@@ -5,7 +5,7 @@
 ---\===================================================//---
 
 	Library:		GodLib
-	Version:		1.10
+	Version:		1.11
 	Author:			Devn
 	
 	Forum Thread:	http://www.forum.botoflegends.com/
@@ -69,7 +69,7 @@
 
 GodLib					= {
 	__Library 			= {
-		Version			= "1.10",
+		Version			= "1.11",
 		Update			= {
 			Host		= "raw.github.com",
 			Path		= "DevnBoL/Scripts/master/GodLib",
