@@ -28,7 +28,7 @@ function OnLoad()
 	
 	_G.GetInventorySlotItem	= GetSlotItem
 	
-	PrintChat("<font color=\"#8183F7\">Ward Jumping Temp-Fix by Devn:</font> <font color=\"#BEF781\">Loaded successfully!</font>")
+	PrintChat("<font color=\"#8183F7\"Item Casting Temp-Fix by Devn (Thanks to Ralphlol for item ids/names):</font> <font color=\"#BEF781\">Loaded successfully!</font>")
 	
 end
 
