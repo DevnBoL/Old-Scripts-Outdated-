@@ -5,8 +5,8 @@
 ---\===================================================//---
 
 	Script:			Ezreal - The Prodigal God
-	Version:		1.00
-	Script Date:	2015-02-02
+	Version:		1.01
+	Script Date:	2015-02-04
 	Author:			Devn
 
 ---//==================================================\\---
@@ -15,17 +15,10 @@
 
 	Version 1.00:
 		- Initial script release.
+		
+	Version 1.01:
+		- Added minimum target range for R killstealing.
 
---]]
-
---[[ Temporary Anti-AFK (Please remove before release)
-function OnTick()
-	if (not _ANTI_AFK or (_ANTI_AFK <= GetGameTimer())) then
-		_ANTI_AFK = GetGameTimer() + 40
-		local position = myHero + (Vector(mousePos) - myHero):normalized() * 250
-		myHero:MoveTo(position.x, position.z)
-	end
-end
 --]]
 
 ---//==================================================\\---
@@ -50,13 +43,13 @@ if (not GodLib) then return end
 GodLib.Update.Host				= "raw.github.com"
 GodLib.Update.Path				= "DevnBoL/Scripts/master/Ezreal"
 GodLib.Update.Version			= "Current.version"
-GodLib.Update.Script			= "Ezreal - The Prodigal God"
+GodLib.Update.Script			= "Ezreal - The Prodigal God.lua"
 
 -- Script variables.
 GodLib.Script.Variables			= "EzrealGod"
 GodLib.Script.Name 				= "Ezreal - The Prodigal God"
-GodLib.Script.Version			= "1.00"
-GodLib.Script.Date				= "2015-02-02"
+GodLib.Script.Version			= "1.01"
+GodLib.Script.Date				= "2015-02-04"
 
 -- Required libraries.
 GodLib.RequiredLibraries		= {
@@ -217,6 +210,7 @@ function SetupConfig_Killstealing(config)
 	config:Toggle("UseW", Format("Use {1} (W)", Spells[_W].Name), true)
 	config:Separator()
 	config:Toggle("UseR", Format("Use {1} (R)", Spells[_R].Name), true)
+	config:Slider("MinRangeR", "Minimum Range to Cast", 500, 0, 2000)
 	config:Slider("MaxRangeR", "Maximum Range to Cast", 1500, 0, 2000)
 
 end
@@ -253,7 +247,7 @@ end
 
 function OnComboMode(config)
 
-	if (myHero.dead or IsEvading() or not config.Active or not IsValid(CurrentTarget)) then
+	if (myHero.dead or IsEvading() or Player.IsAttacking or not config.Active or not IsValid(CurrentTarget)) then
 		return
 	end
 
@@ -275,7 +269,7 @@ end
 
 function OnHarassMode(config)
 
-	if (myHero.dead or IsEvading() or not config.Active or not IsValid(CurrentTarget)) then
+	if (myHero.dead or IsEvading() or Player.IsAttacking or not config.Active or not IsValid(CurrentTarget)) then
 		return
 	end
 	
@@ -301,7 +295,7 @@ function OnKillsteal(config)
 				Spells[_Q]:Cast(enemy)
 			elseif (Spells[_W]:IsReady() and config.UseW and Spells[_W]:InRange(enemy) and Spells[_W]:WillKill(enemy)) then
 				Spells[_W]:Cast(enemy)
-			elseif (Spells[_R]:IsReady() and config.UseR and InRange(enemy, config.MaxRangeR) and Spells[_R]:WillKill(enemy)) then
+			elseif (Spells[_R]:IsReady() and config.UseR and not InRange(enemy, config.MinRangeR) and InRange(enemy, config.MaxRangeR) and Spells[_R]:WillKill(enemy)) then
 				Spells[_R]:Cast(enemy)
 			end
 		end
