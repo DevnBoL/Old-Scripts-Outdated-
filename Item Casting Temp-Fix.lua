@@ -42,12 +42,13 @@ function OnLoad()
 end
 
 function GetSlotItem(id, unit)
+	
+	unit 		= unit or myHero
 
 	if (not ItemNames[id]) then
-		return ___GetInventorySlotItem(id)
+		return ___GetInventorySlotItem(id, unit)
 	end
 
-	unit 		= unit or myHero
 	local name	= ItemNames[id]
 	
 	for slot = ITEM_1, ITEM_7 do
