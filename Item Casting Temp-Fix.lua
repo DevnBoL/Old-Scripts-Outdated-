@@ -2,7 +2,7 @@ function OnLoad()
 
 	ItemNames				= {
 		[2044]				= "SightWard",
-		[3344]				= "TrinketTotemLvl1",
+		[3340]				= "TrinketTotemLvl1",
 		[3350]				= "TrinketTotemLvl2",
 		[3361]				= "TrinketTotemLvl3",
 		[3362]				= "TrinketTotemLvl4",
