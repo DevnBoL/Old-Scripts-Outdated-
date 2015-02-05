@@ -34,6 +34,7 @@ function OnLoad()
 	_G.ITEM_6				= 11
 	_G.ITEM_7				= 12
 	
+	___GetInventorySlotItem	= rawget(_G, "GetInventorySlotItem")
 	_G.GetInventorySlotItem	= GetSlotItem
 	
 	PrintChat("<font color=\"#8183F7\"Item Casting Temp-Fix:</font> <font color=\"#BEF781\">Loaded successfully!</font>")
@@ -43,7 +44,7 @@ end
 function GetSlotItem(id, unit)
 
 	if (not ItemNames[id]) then
-		return nil
+		return ___GetInventorySlotItem(id)
 	end
 
 	unit 		= unit or myHero
