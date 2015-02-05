@@ -26,6 +26,14 @@ function OnLoad()
 		[3142]				= "YoumusBlade",
 	}
 	
+	_G.ITEM_1				= 06
+	_G.ITEM_2				= 07
+	_G.ITEM_3				= 08
+	_G.ITEM_4				= 09
+	_G.ITEM_5				= 10
+	_G.ITEM_6				= 11
+	_G.ITEM_7				= 12
+	
 	_G.GetInventorySlotItem	= GetSlotItem
 	
 	PrintChat("<font color=\"#8183F7\"Item Casting Temp-Fix:</font> <font color=\"#BEF781\">Loaded successfully!</font>")
@@ -41,10 +49,10 @@ function GetSlotItem(id, unit)
 	unit 		= unit or myHero
 	local name	= ItemNames[id]
 	
-	for i = 6, 12 do
+	for slot = ITEM_1, ITEM_7 do
 		local item = unit:GetSpellData(i).name
 		if ((#item > 0) and (item:lower() == name:lower())) then
-			return i
+			return slot
 		end
 	end
 
