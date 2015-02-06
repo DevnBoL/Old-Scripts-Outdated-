@@ -41,7 +41,7 @@
 ---\===================================================//---
 
 _G.NidaleeGod_AutoUpdate			= false
-_G.NidaleeGod_EnableDebugMode		= true
+_G.NidaleeGod_EnableDebugMode		= false
 
 ---//==================================================\\---
 --|| > Initialization									||--
