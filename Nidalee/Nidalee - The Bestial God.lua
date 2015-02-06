@@ -815,7 +815,7 @@ function OnAutoHeal(config)
 		return
 	end
 	
-	if (config.Self and HaveEnoughMana(config.MinMana) and HealthLowerThenPercent(config.MinHealth)) then
+	if (config.Self and HealthLowerThenPercent(config.MinHealth) and (HaveEnoughMana(config.MinMana) or HasBlueBuff())) then
 		Spells.Human[_E]:Cast(myHero)
 		return
 	end
