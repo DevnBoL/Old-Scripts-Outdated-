@@ -659,7 +659,7 @@ function ScriptManager:__CheckLatestScriptVersion()
 	local latest = self:GetWebResult(GodLib.Update.Host, Format("/{1}/{2}", GodLib.Update.Path, GodLib.Update.Version))
 	
 	if (latest and (tonumber(latest) > tonumber(GodLib.Script.Version))) then
-		DownloadFile(self:__SafeLink(Format("https://{1}/{2}/{3}", GodLib.Update.Host, GodLib.Update.Path, GodLib.Update.Script)), Format("{1}{2}.lua", SCRIPT_PATH:gsub("\\", "/"), FILE_NAME), function()
+		DownloadFile(self:__SafeLink(Format("https://{1}/{2}/{3}", GodLib.Update.Host, GodLib.Update.Path, GodLib.Update.Script)), Format("{1}{2}", SCRIPT_PATH:gsub("\\", "/"), FILE_NAME), function()
 			PrintLocal(Format("Updated to v{1}! Please reload script (double F9).", latest))
 		end)
 		PrintLocal("New version available, updating...")
