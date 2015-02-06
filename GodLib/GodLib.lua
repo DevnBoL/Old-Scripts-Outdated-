@@ -59,7 +59,9 @@
 		- Added functions to disable/enable attack/movement (supports SxOrb and SAC).
 		
 	Version 1.11:
-		- Fixed auto-updating.
+		- Added few functions to SpellData class.
+		- Added extra misc. functions.
+		- Changed SxOrb:GetMyRange() for a better range indicator.
 		
 --]]
 
@@ -291,6 +293,10 @@ end
 
 function InRange(unit, range, from)
 
+	if (not range) then
+		return false
+	end
+	
 	from = from or myHero
 
 	return (GetDistance(unit, from) <= range)
@@ -298,6 +304,8 @@ function InRange(unit, range, from)
 end
 
 function HaveEnoughMana(percent, unit)
+
+	assert((percent and (type(percent) == "number")), "HaveEnoughMana(percent, unit) => Expected arguments (<number>, <unit>)")
 
 	unit = unit or myHero
 	return ((unit.mana / unit.maxMana) >= (percent / 100))
@@ -341,7 +349,7 @@ end
 function HealthLowerThenPercent(percent, unit)
 
 	unit = unit or myHero
-	return ((unit.health / unit.maxHealth) >= (percent / 100))
+	return ((unit.health / unit.maxHealth) < (percent / 100))
 
 end
 
@@ -403,6 +411,32 @@ function GetWayPoints(unit)
 	end
 	
 	return waypoints
+
+end
+
+function WillKill(unit, spells)
+
+	local damage = 0
+	
+	if (type(spells) == "table") then
+		for _, spell in ipairs(spells) do
+			if (type(spell) == "string") then
+				damage = damage + getDmg(spell, unit, myHero)
+			elseif (spell.__Id) then
+				damage = damage + getDmg(spell.__Id, unit, myHero)
+			end
+		end
+	else
+		damage = getDmg(spells, unit, myHero)
+	end
+	
+	return (damage > unit.health)
+
+end
+
+function HasBlueBuff(unit)
+
+	return UnitHasBuff((unit or myHero), "crestoftheacientgolem")
 
 end
 
@@ -622,7 +656,7 @@ function ScriptManager:__CheckLatestScriptVersion()
 	local latest = self:GetWebResult(GodLib.Update.Host, Format("/{1}/{2}", GodLib.Update.Path, GodLib.Update.Version))
 	
 	if (latest and (tonumber(latest) > tonumber(GodLib.Script.Version))) then
-		DownloadFile(self:__SafeLink(Format("https://{1}/{2}/{3}", GodLib.Update.Host, GodLib.Update.Path, GodLib.Update.Script)), Format("{1}{2}", SCRIPT_PATH:gsub("\\", "/"), FILE_NAME), function()
+		DownloadFile(self:__SafeLink(Format("https://{1}/{2}/{3}", GodLib.Update.Host, GodLib.Update.Path, GodLib.Update.Script)), Format("{1}{2}.lua", SCRIPT_PATH:gsub("\\", "/"), FILE_NAME), function()
 			PrintLocal(Format("Updated to v{1}! Please reload script (double F9).", latest))
 		end)
 		PrintLocal("New version available, updating...")
@@ -1120,7 +1154,7 @@ function Player:__OnInitialize()
 		self.IsAttacking = false
 		
 		Callbacks:Bind("Attack", function() self.IsAttacking = true end)
-		Callbacks:Bind("AfterAttack", function() self.IsAttacking = false end)
+		Callbacks:Bind("AfterAttack", function() DelayAction(function() self.IsAttacking = false end) end)
 		
 	end
 
@@ -1483,7 +1517,7 @@ end
 
 function SpellData:IsReady()
 	
-	return self.__Base:IsReady()
+	return ((self:GetLevel() > 0) and self.__Base:IsReady()) or false
 
 end
 
@@ -1529,7 +1563,7 @@ end
 
 function SpellData:WillKill(unit)
 
-	return (getDmg(self.__Id, unit, myHero) >= unit.health)
+	return (getDmg(self.__Id, unit, myHero) > unit.health)
 
 end
 
@@ -1566,6 +1600,25 @@ end
 function SpellData:HaveEnoughMana()
 
 	return (myHero.mana >= self:GetCost())
+
+end
+
+function SpellData:GetPredictedHealth(unit, extra)
+
+	return __SpellData.Prediction:GetPredictedHealth(unit, (self.Delay + GetDistance(myHero, unit) / self.Speed - GetLatency() / 1000) + (extra or 0))
+
+end
+
+function SpellData:GetPositionAfterTravelTime(unit)
+
+	return __SpellData.Prediction:GetPredictedPos(unit, self.Delay, self.Speed, myHero, self.Collision)
+
+end
+
+function SpellData:WillHit(unit)
+
+	local _, hitchance, _ = self:GetPrediction(unit)
+	return (hitchance >= 2)
 
 end
 
@@ -1915,7 +1968,7 @@ Callbacks:Bind("Overrides", function()
 		
 		function SxOrbWalk:GetMyRange()
 		
-			return myHero.range + GetDistance(myHero.minBBox) - 20
+			return myHero.range + (myHero.boundingRadius * 2) - 10
 		  
 		end
 		
