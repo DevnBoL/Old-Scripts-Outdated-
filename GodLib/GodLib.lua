@@ -5,7 +5,7 @@
 ---\===================================================//---
 
 	Library:		GodLib
-	Version:		1.11
+	Version:		1.12
 	Author:			Devn
 	
 	Forum Thread:	http://www.forum.botoflegends.com/
@@ -59,6 +59,9 @@
 		- Added functions to disable/enable attack/movement (supports SxOrb and SAC).
 		
 	Version 1.11:
+		- Not to sure didn't realize I pushed this update.
+		
+	Version 1.12:
 		- Added few functions to SpellData class.
 		- Added extra misc. functions.
 		- Changed SxOrb:GetMyRange() for a better range indicator.
@@ -71,7 +74,7 @@
 
 GodLib					= {
 	__Library 			= {
-		Version			= "1.11",
+		Version			= "1.12",
 		Update			= {
 			Host		= "raw.github.com",
 			Path		= "DevnBoL/Scripts/master/GodLib",
