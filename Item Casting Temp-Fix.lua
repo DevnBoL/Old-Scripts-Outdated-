@@ -84,7 +84,7 @@ function OnLoad()
 	___GetInventorySlotItem	= rawget(_G, "GetInventorySlotItem")
 	_G.GetInventorySlotItem	= GetSlotItem
 	
-	PrintChat("<font color=\"#8183F7\"Item Casting Temp-Fix:</font> <font color=\"#BEF781\">Loaded successfully!</font>")
+	PrintChat("Item Casting Temp-Fix by Devn!")
 	
 end
 
