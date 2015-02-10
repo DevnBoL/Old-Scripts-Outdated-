@@ -26,7 +26,7 @@ function OnLoad()
 		[3362]				= "TrinketTotemLvl4",
 		[3159]				= "HextechSweeper",
 		[2051]				= "ItemHorn",
-		[2003]				= "RegenerationPotion",
+		--[2003]			= "RegenerationPotion",
 		[3146]				= "HextechGunblade",
 		[3187]				= "HextechSweeper",
 		[3190]				= "IronStylus",
