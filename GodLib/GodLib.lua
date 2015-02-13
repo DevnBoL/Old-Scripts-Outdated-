@@ -5,7 +5,7 @@
 ---\===================================================//---
 
 	Library:		GodLib
-	Version:		1.12
+	Version:		1.13
 	Author:			Devn
 	
 	Forum Thread:	http://www.forum.botoflegends.com/
@@ -66,6 +66,9 @@
 		- Added extra misc. functions.
 		- Changed SxOrb:GetMyRange() for a better range indicator.
 		
+	Version 1.13:
+		- Fixed File_Temp.lua error.
+		
 --]]
 
 ---//==================================================\\---
@@ -74,7 +77,7 @@
 
 GodLib					= {
 	__Library 			= {
-		Version			= "1.12",
+		Version			= "1.13",
 		Update			= {
 			Host		= "raw.github.com",
 			Path		= "DevnBoL/Scripts/master/GodLib",
@@ -1850,131 +1853,4 @@ Callbacks:Bind("Overrides", function()
 	
 	end
 	
-	if (SxOrb) then
-
-		function SxOrbWalk:LoadToMenu(config, keys, selector)
-		
-			if (myHero.range == 0.5) then
-				DelayAction(function()
-				  self:LoadToMenu(config)
-				end)
-				return
-			end
-			
-			if (self.LoadedToMenu) then
-				return
-			end
-			
-			config:Menu("General", "Settings: General")
-			if ((keys == nil) or keys) then
-				config:Menu("Keys", "Settings: Keys")
-			end
-			config:Menu("Farm", "Settings: Farming")
-			config:Menu("Mastery", "Settings: Masteries")
-			config:Menu("Draw", "Settings: Drawing")
-			
-			config.General:Toggle("Enabled", "OrbWalker Enabled", true)
-			config.General:Separator()
-			config.General:Toggle("StopMove", "Stop Move When Mouse Above Hero", false)
-			config.General:Slider("StopMoveSlider", "Range to Stop Move", 100, 50, 500)
-			
-			if ((keys == nil) or keys) then
-				config.Keys:KeyBinding("Fight", "Auto-Carry Mode", false, 32)
-				config.Keys:KeyBinding("Harass", "Mixed Mode", false, "C")
-				config.Keys:KeyBinding("LaneClear", "Lane-Clear Mode", false, "X")
-				config.Keys:KeyBinding("LastHit", "Last-Hit Mode", false, "V")
-			else
-				self.NoMenuKeys = true
-			end
-			
-			config.Farm:Toggle("FarmOverHarass", "Focus Farm Over Harass", true)
-			config.Farm:Separator()
-			config.Farm:Slider("ExtraDelay", "Extra Delay to Last-Hit", 0, 0, 150)
-			
-			config.Mastery:Toggle("Butcher", "Butcher", true)
-			config.Mastery:Toggle("ArcaneBlade", "Arcane Blade", true)
-			config.Mastery:Toggle("Havoc", "Havoc", true)
-			config.Mastery:Slider("DevastatingStrikes", "Devastating Strikes", 0, 0, 3)
-			
-			config.Draw:Toggle("EnemyAARange", "Draw Enemy Auto-Attack Range", true)
-			config.Draw:Separator()
-			config.Draw:Toggle("MinionCircle", "Draw Last-Hit Circe Around Minions", true)
-			config.Draw:Toggle("MinionLine", "Draw Last-Hit Line on Minions", true)
-			
-			config:Separator()
-			
-			config:Info("Author", "Aroc")
-			config:Info("Name", "SxOrbWalk")
-			config:Info("Version", self.Version)
-			
-			config.Mastery.Butcher 				= false
-			config.Mastery.ArcaneBlade 			= false
-			config.Mastery.Havoc 				= false
-			config.Mastery.DevastatingStrikes	= 0
-			
-			if ((selector == nil) or selector) then
-				self.TS 		= TargetSelector(TARGET_LESS_CAST_PRIORITY, self:GetMyRange(), DAMAGE_PHYSICAL, false)
-				config:addTS(self.TS)
-			else
-				self.NoSelector	= true
-				self.TS 		= { range = 0, target = nil }
-			end
-			
-			self.SxOrbMenu						= config
-			
-			if (not _G.SxOrbMenu) then
-				_G.SxOrbMenu 		= self.SxOrbMenu
-				_G.SxOrbMenu.Mode	= { }
-				TickManager:Add("SxOrb", "Orbwalker Tick Rate", 100, function()
-					self:Tick()
-					if (not self.NoSelector) then
-						self.TS:update()
-					end
-					self:CalcKillableMinion()
-					self:CleanMinionAttacks()
-					self:HotKeyCallback()
-					self.Minions:update()
-					self.OwnMinions:update()
-					self.LaneClearMinions:update()
-					self.JungleMinions:update()
-					self.OtherMinions:update()
-				end)
-				Callbacks:Bind("Draw", function()
-					self:Draw()
-				end)
-				Callbacks:Bind("ProcessSpell", function(unit, spell)
-					self:OnMinionAttack(unit, spell)
-					self:OnSelfAction(unit, spell)
-				end)
-				Callbacks:Bind("RecvPacket", function(packet)
-					self:RecvAACancel(packet)
-				end)
-				Callbacks:Bind("CreateObj", function(object)
-					self:BonusDamageObj(object)
-					self:OnCreateObj(object)
-				end)
-				Callbacks:Bind("DeleteObj", function(object)
-					self:OnDeleteObj(object)
-				end)
-				Callbacks:Bind("FoundSAC", function()
-					self.SxOrbMenu.General.Enabled = false
-					table.insert(self.SxOrbMenu.General._param, 2, {
-						var		= "nil",
-						text	= "Note: SAC has been found!",
-						pType	= SCRIPT_PARAM_INFO,
-					})
-					PrintLocal("Sida's Auto Carry found! Disabled SxOrbWalk.")
-				end)
-			end
-
-		end
-		
-		function SxOrbWalk:GetMyRange()
-		
-			return myHero.range + (myHero.boundingRadius * 2) - 10
-		  
-		end
-		
-	end
-		
 end)
