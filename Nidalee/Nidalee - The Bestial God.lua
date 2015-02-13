@@ -40,7 +40,7 @@
 --|| > User Variables									||--
 ---\===================================================//---
 
-_G.NidaleeGod_AutoUpdate			= false
+_G.NidaleeGod_AutoUpdate			= true
 _G.NidaleeGod_EnableDebugMode		= false
 
 ---//==================================================\\---
