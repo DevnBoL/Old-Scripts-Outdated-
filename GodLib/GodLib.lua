@@ -1852,5 +1852,15 @@ Callbacks:Bind("Overrides", function()
 		Callbacks:Bind("ProcessSpell", function(unit, spell) self:__OnProcessSpell(unit, spell) end)
 	
 	end
+
+	if (SxOrb) then
+		
+		function SxOrbWalk:GetMyRange()
+		
+			return myHero.range + (myHero.boundingRadius * 2) - 10
+		  
+		end
+		
+	end
 	
 end)
