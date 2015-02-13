@@ -1,1 +1,1 @@
-Script cannot disable SxOrb anymore, please disable it yourself if using SAC:R!
+Script cannot disable SxOrb anymore, please disable it yourself if using SAC:R! Also I accidentally disabled auto-updater, please re-enable it!
