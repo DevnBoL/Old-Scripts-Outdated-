@@ -1097,17 +1097,3 @@ function CastTakedown(unit)
 	SxOrb:MyAttack(unit)
 
 end
-
----//==================================================\\---
---|| > Override Functions								||--
----\===================================================//---
-
-Callbacks:Bind("Overrides", function()
-
-	function SxOrb:GetTarget(range)
-	
-		return (self:ValidTarget(CurrentTarget, range) and CurrentTarget) or Selector:GetTarget(SxOrb:GetMyRange())
-	
-	end
-
-end)
