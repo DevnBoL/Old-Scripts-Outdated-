@@ -1,1 +1,1 @@
-SxOrbWalk has been disabled by default, if you still wish to use it (may cause bugsplats) you can enable it through the script!
+SxOrbWalk has been disabled by default, if you still wish to use it (may cause bugsplats) you can enable it through the scripts source!
