@@ -14,7 +14,7 @@
 ---\\=================================================================================================//---
 
 	Script:			Nidalee - The Bestial God
-	Version:		1.04
+	Version:		1.05
 	Script Date:	2015-02-14
 	Author:			Devn
 
@@ -48,6 +48,9 @@
 		- Added target searching for harass mode.
 		- Added swapping to human to throw spear for harass mode.
 		- Added spear collision drawing.
+		
+	Version 1.05:
+		- Fixed pounce casting.
 
 --]]
 
@@ -80,7 +83,7 @@ GodLib.Update.Script		= "Nidalee - The Bestial God.lua"
 -- Script variables.
 GodLib.Script.Variables		= "NidaleeGod"
 GodLib.Script.Name 			= "Nidalee - The Bestial God"
-GodLib.Script.Version		= "1.04"
+GodLib.Script.Version		= "1.05"
 GodLib.Script.Date			= "2015-02-14"
 GodLib.Script.SafeVersion	= "5.3"
 GodLib.Script.Key			= "VILJJPJJIPN"
@@ -230,6 +233,8 @@ function SetupVariables()
 	
 	Spells.Human[_Q]:SetSkillshot(SKILLSHOT_LINEAR, 37, 0.125, 1300, true)
 	Spells.Human[_W]:SetSkillshot(SKILLSHOT_CIRCULAR, 100, 0.5, 1500, false)
+	
+	Spells.Cougar[_W]:SetSkillshot(SKILLSHOT_CIRCULAR, 95, 0.5, 1500, false)
 	
 	AutoLeveler:AddStartSequence("Q > E > W", { _Q, _E, _W }, true)
 	AutoLeveler:AddStartSequence("W > E > Q", { _W, _E, _Q })
