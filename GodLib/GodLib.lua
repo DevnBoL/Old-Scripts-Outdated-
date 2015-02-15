@@ -5,10 +5,8 @@
 ---\===================================================//---
 
 	Library:		GodLib
-	Version:		1.13
+	Version:		1.14
 	Author:			Devn
-	
-	Forum Thread:	http://www.forum.botoflegends.com/
 
 ---//==================================================\\---
 --|| > Changelog										||--
@@ -67,7 +65,11 @@
 		- Changed SxOrb:GetMyRange() for a better range indicator.
 		
 	Version 1.13:
-		- Fixed File_Temp.lua error.
+		- Fixed Fixed File_Temp.lua error.
+		
+	Version 1.14:
+		- Added AutoLevelManager class.
+		- Added AdvancedSettings class.
 		
 --]]
 
@@ -77,7 +79,7 @@
 
 GodLib					= {
 	__Library 			= {
-		Version			= "1.13",
+		Version			= "1.14",
 		Update			= {
 			Host		= "raw.github.com",
 			Path		= "DevnBoL/Scripts/master/GodLib",
@@ -97,6 +99,7 @@ GodLib					= {
 		Name			= "Untitled",
 		Version			= "0.01",
 		Date			= "Not Released",
+		SafeVersion		= "Untested",
 		Key				= nil,
 	},
 	Print				= {
@@ -118,14 +121,17 @@ AddLoadCallback(function()
 	ScriptName								= GodLib.Script.Name
 	ScriptVersion							= GodLib.Script.Version
 	ScriptDate								= GodLib.Script.Date
+	VariableName							= GodLib.Script.Variables
+	SafeVersion								= GodLib.Script.SafeVersion
 	
 	-- Update GodLib variables.
 	GodLib.Script.Variables					= GodLib.Script.Variables or GodLib.Script.Name
 	GodLib.Print.Title						= GodLib.Print.Title or GodLib.Script.Name
 
 	-- Public user variables.
-	AutoUpdate								= _G[Format("{1}_AutoUpdate", GodLib.Script.Variables)] or false
-	EnableDebugMode							= _G[Format("{1}_EnableDebugMode", GodLib.Script.Variables)] or false
+	AutoUpdate								= _G[Format("{1}_AutoUpdate", VariableName)] or false
+	DisableSxOrbWalk						= _G[Format("{1}_DisableSxOrbWalk", VariableName)] or false
+	EnableDebugMode							= _G[Format("{1}_EnableDebugMode", VariableName)] or false
 
 	-- Default required libraries.
 	GodLib.RequiredLibraries["SourceLib"]	= "https://raw.githubusercontent.com/gbilbao/Bilbao/master/BoL1/Common/SourceLib.lua"
@@ -141,6 +147,9 @@ AddLoadCallback(function()
 
 	__SpellData			= {
 		Prediction		= nil,
+		Prodiction		= nil,
+		Config			= nil,
+		SpellNum		= 1,
 		Ids				= {
 			[_Q]		= "Q",
 			[_W]		= "W",
@@ -234,13 +243,12 @@ function IsValid(target, range, from)
 		return false
 	end
 
-	from = from or myHero
+	from 	= from or myHero
+	range	= range or math.huge
 
-	if (ValidTarget(target)) then
-		if (not range or (GetDistance(target, from) <= range)) then
-			if (not (UnitHasBuff(target, "UndyingRage") and (target.health == 1)) and not UnitHasBuff(target, "JudicatorIntervention")) then
-				return true
-			end
+	if (ValidTarget(target, range)) then
+		if (not (UnitHasBuff(target, "UndyingRage") and (target.health == 1)) and not UnitHasBuff(target, "JudicatorIntervention")) then
+			return true
 		end
 	end
 	
@@ -323,7 +331,7 @@ function IsFleeing(unit, range, from, distance)
 	from 			= from or myHero
 	distance		= distance or 0
 
-	local position	= Prediction:GetPredictedPos(unit, 0.1)
+	local position	= __SpellData.Prediction:GetPredictedPos(unit, 0.1)
 	
 	if (position and (GetDistance(position, from) > (GetDistance(unit, from) + distance)) and (GetDistance(unit, from) >= range)) then
 		return true
@@ -464,10 +472,14 @@ end
 
 function string.Equals(string, value, exact)
 
+	exact = exact or false
+
 	if (not exact) then
 		string 	= string:ToLower():Trim()
-		value 	= value:ToLower():Trim()
+		value 	= tostring(value):ToLower():Trim()
 	end
+	
+	--print(Format("string.Equals() => ('{1}','{2}',{3})", string, value, tostring(exact)))
 
 	return (string == value)
 
@@ -680,7 +692,7 @@ function ScriptManager:__LoadRequiredLibraries()
 	
 	for library, url in pairs(GodLib.RequiredLibraries) do
 		local path = Format("{1}{2}.lua", LIB_PATH, library)
-		if (not FileExist(path)) then
+		if (not FileExist(path) and not (library:Equals("SxOrbWalk") and DisableSxOrbWalk)) then
 			missing = true
 			downloads = downloads + 1
 			DownloadFile(url, path, function()
@@ -698,7 +710,9 @@ function ScriptManager:__LoadRequiredLibraries()
 	end
 	
 	for library, _ in pairs(GodLib.RequiredLibraries) do
-		require(library)
+		if (not (library:Equals("SxOrbWalk") and DisableSxOrbWalk)) then
+			require(library)
+		end
 	end
 	
 	return true
@@ -716,15 +730,22 @@ function ScriptManager:__SetupScriptStatus()
 
 end
 
+function ScriptManager:__LoadVariables()
+
+	__SpellData.Prediction = VPrediction()
+
+end
+
 function ScriptManager:__CheckForSAC()
 
 	if (_G.AutoCarry) then
 		FoundSAC = true
 		Callbacks:Call("FoundSAC")
 	elseif (_G.Reborn_Loaded) then
+		FoundSAC = true
 		DelayAction(function()
 			self:__CheckForSAC()
-		end, 5)
+		end, 1)
 	end
 
 end
@@ -732,10 +753,9 @@ end
 function ScriptManager:__LoadScript()
 
 	self:__SetupScriptStatus()
-
 	Callbacks:Call("Overrides")
+	self:__LoadVariables()
 	Callbacks:Call("Initialize")
-	
 	self:__CheckForSAC()
 
 end
@@ -901,6 +921,8 @@ function DrawManager:GetColorIndex(name)
 			return index
 		end
 	end
+	
+	return 1
 
 end
 
@@ -963,6 +985,81 @@ function DrawManager:DrawCircleMinimapAt(vector, radius, color, width, quality)
 
 	self:DrawCircleMinimap(vector.x, vector.y, vector.z, radius, color, width, quality)
 
+end
+
+function DrawManager:DrawLineBorder3D(startX, startY, startZ, endX, endY, endZ, size, color, width)
+
+	DrawLineBorder3D(startX, startY, startZ, endX, endY, endZ, size, self:__ParseColor(color), width)
+
+end
+
+function DrawManager:DrawLineBorder3DAt(pos1, pos2, size, color, width)
+
+	return self:DrawLineBorder3D(pos1.x, pos1.y, pos1.z, pos2.x, pos2.y, pos2.z, size, color, width)
+
+end
+
+function DrawManager:DrawHealthIndicator(unit, width, color, current)
+
+	--[[
+	local _cc, acc, bcc	= GetBarInfo(unit)
+	local ccc 			= width * (acc * (unit.health / unit.maxHealth))
+	
+	local cbc			= _cc.x
+	local dbc			= _cc.y - 7
+	local _cc			= 2
+	local width			= bcc / 2
+	
+	local points		= {
+		D3DXVECTOR2(math.floor(cbc), math.floor(dbc)),
+		D3DXVECTOR2(math.floor(cbc + _cc), math.floor(dbc)),
+	}
+	
+	self:DrawLine(points, width, color)
+	--]]
+	
+	--[[
+	local _cc, acc, bcc	= GetBarInfo(unit)
+	local ccc			= width / unit.maxHealth * acc
+	
+	local cbc			= _cc.x + ccc
+	local dbc			= _cc.y
+	local _cc2			= 2
+	local acc2			= bcc
+	local color			= RGB(0, 255, 255)
+	
+	local points 		= { }
+	
+	points[1] 			= D3DXVECTOR2(math.floor(cbc), math.floor(dbc))
+	points[2] 			= D3DXVECTOR2(math.floor(cbc + _cc2), math.floor(dbc))
+	
+	self:DrawLine(points, math.floor(acc2), color)
+	--]]
+	
+	--[[
+	local width			= width
+	local current		= current or false
+	local position		= GetUnitHPBarPos(unit)
+	local offsetLeft	= 41.55
+	local offset 		= 63 / (unit.maxHealth / width)
+	
+	local points1		= { }
+	
+	if (current) then
+		table.insert(points1, D3DXVECTOR2(position.x - offsetLeft + offset, position.y + 12.5))
+		table.insert(points1, D3DXVECTOR2(position.x - offsetLeft + offset, position.y - 1.5))
+	end
+	
+	local points2	= {
+		D3DXVECTOR2(position.x - offsetLeft, position.y + 12.5),
+		D3DXVECTOR2(position.x - offsetLeft, position.y - 1.5),
+	}
+	
+	self:DrawLine(points1, 1, color)
+	DrawRectangle(position.x - offsetLeft, position.y + 4, offset, 9, color)
+	self:DrawLine(points2, 1, color)
+	--]]
+			
 end
 
 DrawManager = DrawManager()
@@ -1088,7 +1185,7 @@ function PriorityManager:__init()
 	
 	self.__PriorityTable	= {
 		["ADC"]				= { "Ashe", "Caitlyn", "Corki", "Draven", "Ezreal", "Graves", "Jayce", "Jinx", "KogMaw", "Lucian", "MasterYi", "MissFortune", "Pantheon", "Quinn", "Shaco", "Sivir", "Talon","Tryndamere", "Tristana", "Twitch", "Urgot", "Varus", "Vayne", "Yasuo","Zed" },
-		["APC"]				= { "Annie", "Ahri", "Akali", "Anivia", "Annie", "Brand", "Cassiopeia", "Diana", "Evelynn", "FiddleSticks", "Fizz", "Gragas", "Heimerdinger", "Karthus", "Kassadin", "Katarina", "Kayle", "Kennen", "Leblanc", "Lissandra", "Lux", "Malzahar", "Mordekaiser", "Morgana", "Nidalee", "Orianna", "Ryze", "Sion", "Swain", "Syndra", "Teemo", "TwistedFate", "Veigar", "Viktor", "Vladimir", "Xerath", "Ziggs", "Zyra" },
+		["APC"]				= { "Annie", "Ahri", "Akali", "Anivia", "Annie", "Brand", "Cassiopeia", "Diana", "Evelynn", "FiddleSticks", "Fizz", "Gragas", "Heimerdinger", "Karthus", "Kassadin", "Katarina", "Kayle", "Kennen", "Leblanc", "Lissandra", "Lux", "Malzahar", "Mordekaiser", "Morgana", "Nidalee", "Orianna", "Ryze", "Sion", "Swain", "Syndra", "Teemo", "TwistedFate", "VelKoz", "Veigar", "Viktor", "Vladimir", "Xerath", "Ziggs", "Zyra" },
 		["Support"]			= { "Alistar", "Blitzcrank", "Janna", "Karma", "Leona", "Lulu", "Nami", "Nunu", "Sona", "Soraka", "Taric", "Thresh", "Zilean", "Braum" },
 		["Bruiser"]			= { "Aatrox", "Darius", "Elise", "Fiora", "Gangplank", "Garen", "Gnar", "Irelia", "JarvanIV", "Jax", "Khazix", "LeeSin", "Nocturne", "Olaf", "Poppy", "Renekton", "Rengar", "Riven", "Rumble", "Shyvana", "Trundle", "Udyr", "Vi", "MonkeyKing", "XinZhao" },
 		["Tank"]			= { "Amumu", "Chogath", "DrMundo", "Galio", "Hecarim", "Malphite", "Maokai", "Nasus", "Rammus", "Sejuani", "Nautilus", "Shen", "Singed", "Skarner", "Volibear", "Warwick", "Yorick", "Zac" }
@@ -1149,19 +1246,48 @@ class("Player")
 
 function Player:__init()
 
+	self.IsRecalling	= false
+	self.IsAttacking 	= false
+
 	Callbacks:Bind("Initialize", function() self:__OnInitialize() end)
 
 end
 
 function Player:__OnInitialize()
 
+	Callbacks:Bind("Recall", function() self:__OnRecall(unit) end)
+	Callbacks:Bind("AbortRecall", function() self:__OnAbortRecall(unit) end)
+	Callbacks:Bind("FinishRecall", function() self:__OnFinishRecall(unit) end)
+
 	if (SxOrb) then
-	
-		self.IsAttacking = false
 		
 		Callbacks:Bind("Attack", function() self.IsAttacking = true end)
 		Callbacks:Bind("AfterAttack", function() DelayAction(function() self.IsAttacking = false end) end)
 		
+	end
+
+end
+
+function Player:__OnRecall(unit)
+
+	if (unit.networkID == myHero.networkID) then
+		self.IsRecalling = true
+	end
+
+end
+
+function Player:__OnAbortRecall(unit)
+
+	if (unit.networkID == myHero.networkID) then
+		self.IsRecalling = false
+	end
+
+end
+
+function Player:__OnFinishRecall(unit)
+
+	if (unit.networkID == myHero.networkID) then
+		self.IsRecalling = false
 	end
 
 end
@@ -1223,6 +1349,28 @@ function Player:EnableMovement()
 	if (FoundSAC) then
 		_G.AutoCarry.MyHero:MovementEnabled(true)
 	end
+
+end
+
+function Player:GetAP()
+
+	return myHero.ap
+
+end
+
+function Player:GetRange()
+
+	return (myHero.range + GetDistance(myHero.minBBox)) - myHero.boundingRadius + 95
+
+end
+
+function Player:CanAttack()
+
+	if (SxOrb) then
+		return SxOrb:CanAttack()
+	end
+	
+	return true
 
 end
 
@@ -1351,10 +1499,10 @@ function scriptConfig:Menu(name, title)
 
 end
 
-function scriptConfig:Separator()
+function scriptConfig:Separator(text)
 
 	self:addParam("nil", "-------------------------------------------------------------------", SCRIPT_PARAM_INFO, "")
-
+		
 end
 
 function scriptConfig:Info(info, value)
@@ -1455,7 +1603,7 @@ function SpellData:__init(key, range, name, id)
 	self.__Base		= Spell(self.Key, 0)
 	
 	self:SetRange(self:GetRange())
-
+	
 end
 
 function SpellData:GetRange()
@@ -1490,18 +1638,35 @@ end
 
 function SpellData:SetSkillshot(type, width, delay, speed, collision)
 
-	if (not __SpellData.Prediction) then
-		__SpellData.Prediction = VPrediction()
-	end
-
 	self.Type		= type
 	self.Width		= width or 0
 	self.Delay		= delay or 0
 	self.Speed		= speed or 0
 	self.Collision	= collision or false
-
+	
 	self.__Base:SetSkillshot(__SpellData.Prediction, type, width, delay, speed, collision)
 	
+	--[[
+	if (__SpellData.Prodiction) then
+		self.__Prodiction	= __SpellData.Prodiction:AddProdictionObject(key, self:GetRange(), self.Speed, self.Delay, self.Width, myHero, function(unit, pos, info)
+			if (self:InRange(unit)) then
+				local cast = true
+				if (self.Collision and info.collision()) then
+					cast = false
+				end
+				if (cast) then
+					self:CastAt(pos)
+				end
+			end
+		end)
+		for _, enemy in ipairs(GetEnemyHeroes()) do
+			if (IsEnemy(enemy)) then
+				self.__Prodiction:CanNotMissMode(true, enemy)
+			end
+		end
+	end
+	--]]
+
 	return self
 
 end
@@ -1538,6 +1703,12 @@ function SpellData:Cast(param1, param2)
 	
 	self:SetRange(self:GetRange())
 	return self.__Base:Cast(param1, param2)
+	
+	--[[
+	if (self.__Prodiction and (self.PredictionType == 2) and (param1 and not param2)) then
+		self.__Prodiction:EnableTarget(param1, true)
+	end
+	-]]
 
 end
 
@@ -1563,13 +1734,13 @@ end
 
 function SpellData:IsValid(target)
 
-	return (IsValid(target) and self:InRange(target))
+	return (IsValid(target, self:GetRange(target)))
 
 end
 
 function SpellData:WillKill(unit)
 
-	return (getDmg(self.__Id, unit, myHero) > unit.health)
+	return (self:GetDamage(unit) > unit.health)
 
 end
 
@@ -1615,7 +1786,7 @@ function SpellData:GetPredictedHealth(unit, extra)
 
 end
 
-function SpellData:GetPositionAfterTravelTime(unit)
+function SpellData:GetPredictedPosition(unit)
 
 	return __SpellData.Prediction:GetPredictedPos(unit, self.Delay, self.Speed, myHero, self.Collision)
 
@@ -1625,6 +1796,342 @@ function SpellData:WillHit(unit)
 
 	local _, hitchance, _ = self:GetPrediction(unit)
 	return (hitchance >= 2)
+
+end
+
+function SpellData:GetDamage(unit)
+
+	return getDmg(self.__Id, unit, myHero)
+
+end
+
+function SpellData:SetHitChance(hitchance)
+
+	self.__Base:SetHitChance(hitchance)
+
+end
+
+function SpellData:GetHitChance()
+
+	return self.__Base.hitChance or 2
+
+end
+
+---//==================================================\\---
+--|| > AutoLevelManager Class							||--
+---\===================================================//---
+
+class("AutoLevelManager")
+
+function AutoLevelManager:__init(ultimateOff)
+
+	self.__UltimateOff		= (ultimateOff and 1) or 0
+
+	self.__StartSequences	= { }
+	self.__EndSequences		= { }
+
+end
+
+function AutoLevelManager:AddStartSequence(name, sequence, default)
+
+	default = default or false
+	
+	if (default) then
+		for _, data in ipairs(self.__StartSequences) do
+			data.Default = false
+		end
+	end
+
+	table.insert(self.__StartSequences, {
+		Name		= name,
+		Sequence	= sequence,
+		Default		= default,
+	})
+
+end
+
+function AutoLevelManager:AddEndSequence(name, sequence, default)
+
+	default = default or false
+	
+	if (default) then
+		for _, data in ipairs(self.__EndSequences) do
+			data.Default = false
+		end
+	end
+
+	table.insert(self.__EndSequences, {
+		Name		= name,
+		Sequence	= sequence,
+		Default		= default,
+	})
+
+end
+
+function AutoLevelManager:LoadToMenu(config)
+
+	config:Menu("Start", "Start Sequences (1-3)")
+	config:Menu("End", "End Sequences (4-18)")
+	
+	config.Start:Toggle("Enabled", "Enabled", false)
+	config.Start:Toggle("DisableAtStart", "Disable at Start of Game", false)
+	config.Start:Separator()
+	config.Start:DropDown("Sequence", "Level Sequence", self:__GetDefault(self.__StartSequences), self:__GetSequences(self.__StartSequences))
+	
+	config.End:Toggle("Enabled", "Enabled", false)
+	config.End:Toggle("DisableAtStart", "Disable at Start of Game", false)
+	config.End:Separator()
+	config.End:DropDown("Sequence", "Level Sequence", self:__GetDefault(self.__EndSequences), self:__GetSequences(self.__EndSequences))
+	
+	config:Separator()
+	config:Toggle("Enabled", "Enabled", false)
+	
+	if (config.Start.DisableAtStart) then
+		config.Start.Enabled = false
+	end
+	
+	if (config.End.DisableAtStart) then
+		config.End.Enabled = false
+	end
+	
+	self.__Config = config
+	
+	TickManager:Add("AutoLevel", "Auto-Level Check", 1, function() self:__OnTick() end)
+
+end
+
+function AutoLevelManager:__GetDefault(sequences)
+
+	for i, data in ipairs(self.__StartSequences) do
+		if (data.Default) then
+			return i
+		end
+	end
+
+end
+
+function AutoLevelManager:__GetSequences(sequences)
+
+	local names = { }
+
+	for i = 1, #sequences do
+		table.insert(names, sequences[i].Name)
+	end
+	
+	return names
+
+end
+
+function AutoLevelManager:__OnTick()
+
+	if (not self.__Config.Enabled) then
+		return
+	end
+
+	local qLevel	= myHero:GetSpellData(_Q).level
+	local wLevel	= myHero:GetSpellData(_W).level
+	local eLevel	= myHero:GetSpellData(_E).level
+	local rLevel	= myHero:GetSpellData(_R).level - self.__UltimateOff
+	
+	local total		= (qLevel + wLevel + eLevel + rLevel)
+	
+	if (total < myHero.level) then
+	
+		if ((total < 3) and self.__Config.Start.Enabled) then
+		
+			local sequence 	= self.__StartSequences[self.__Config.Start.Sequence].Sequence
+			local levels	= { [_Q] = 0, [_W] = 0, [_E] = 0 }
+			local levelTo	= (myHero.level <= 3) and myHero.level or 3
+			
+			for i = 1, levelTo do
+				levels[sequence[i]] = levels[sequence[i]] + 1
+			end
+			
+			while (qLevel < levels[_Q]) do
+				LevelSpell(_Q)
+				qLevel = qLevel + 1
+			end
+			
+			while (wLevel < levels[_W]) do
+				LevelSpell(_W)
+				wLevel = wLevel + 1
+			end
+			
+			while (eLevel < levels[_E]) do
+				LevelSpell(_E)
+				eLevel = eLevel + 1
+			end
+			
+		end
+		
+		if ((total >= 3) and self.__Config.End.Enabled) then
+		
+			local sequence 	= self.__EndSequences[self.__Config.End.Sequence].Sequence
+			local levels	= { [_Q] = 1, [_W] = 1, [_E] = 1, [_R] = 0 }
+			local levelTo	= myHero.level - 3
+			
+			for i = 1, levelTo do
+				levels[sequence[i]] = levels[sequence[i]] + 1
+			end
+			
+			while (qLevel < levels[_Q]) do
+				LevelSpell(_Q)
+				qLevel = qLevel + 1
+			end
+			
+			while (wLevel < levels[_W]) do
+				LevelSpell(_W)
+				wLevel = wLevel + 1
+			end
+			
+			while (eLevel < levels[_E]) do
+				LevelSpell(_E)
+				eLevel = eLevel + 1
+			end
+			
+			while (rLevel < levels[_R]) do
+				LevelSpell(_R)
+				rLevel = rLevel + 1
+			end
+		
+		end
+		
+	end
+
+end
+
+---//==================================================\\---
+--|| > AdvancedSettings Class							||--
+---\===================================================//---
+
+SettingType	= {
+	Note		= 1,
+	DropDown	= 2,
+	Separator	= 3,
+	Toggle		= 4,
+}
+
+class("AdvancedSettings")
+
+function AdvancedSettings:__init(name, header)
+
+	self.__Config	= nil
+	
+	self.__Name		= name
+	self.__Header	= header
+	
+	self.__Groups	= { }
+
+end
+
+function AdvancedSettings:__OnResetAdvanced()
+
+	if (self.__Config.Reset) then
+		self:Reset()
+		self.__Config.Reset = false
+	end
+
+end
+
+function AdvancedSettings:__CreateMenu()
+
+	local config	= MenuConfig(Format("{1}_Advanced", self.__Name), Format("{1}: Advanced", self.__Header))
+	
+	for i = 1, #self.__Groups do
+		local group = self.__Groups[i]
+		config:Menu(group.Name, Format("Settings: {1}", group.Header))
+		for i = 1, #group.Variables do
+			local variable = group.Variables[i]
+			if (variable.Type == SettingType.Note) then
+				config[group.Name]:Note(variable.Name)
+			elseif (variable.Type == SettingType.DropDown) then
+				config[group.Name]:DropDown(variable.Name, variable.Header, variable.Default, variable.Objects)
+			elseif (variable.Type == SettingType.Separator) then
+				config[group.Name]:Separator()
+			elseif (variable.Type == SettingType.Toggle) then
+				config[group.Name]:Toggle(variable.Name, variable.Header, variable.Default)
+			end
+		end
+	end
+	
+	config:Separator()
+	config:Toggle("Reset", "Reset Advanced Settings", false, false)
+	
+	self.__Config	= config
+
+end
+
+function AdvancedSettings:LoadToMenu(config)
+
+	config:Toggle("UseAdvanced", "Use Advanced Settings", false)
+	config:Note("Requires reload, uses default if disabled.")
+	
+	if (config.UseAdvanced) then
+		self:__CreateMenu()
+		TickManager:Add("ResetAdvanced", "Reset Advanced Settings", 1, function() self:__OnResetAdvanced() end)
+	end
+
+end
+
+function AdvancedSettings:AddGroup(name, header)
+
+	table.insert(self.__Groups, {
+		Name		= name,
+		Header		= header,
+		Variables	= { },
+	})
+
+end
+
+function AdvancedSettings:AddVariable(group, type, variable, header, default, objects)
+
+	for _, groupData in ipairs(self.__Groups) do
+		if (groupData.Name:Equals(group)) then
+			table.insert(groupData.Variables, {
+				Name		= variable,
+				Type		= type,
+				Header		= header,
+				Default		= default,
+				Objects		= objects,
+			})
+			return
+		end
+	end
+
+end
+
+function AdvancedSettings:Get(name, var)
+
+	for _, group in ipairs(self.__Groups) do
+		if (group.Name:Equals(name)) then
+			for _, variable in ipairs(group.Variables) do
+				if (variable.Name and variable.Name:Equals(var)) then
+					if (self.__Config) then
+						return self.__Config[name][var]
+					else
+						return variable.Default
+					end
+				end
+			end
+			return
+		end
+	end
+
+end
+
+function AdvancedSettings:Reset()
+
+	for i = 1, #self.__Groups do
+		local group = self.__Groups[i]
+		for i = 1, #group.Variables do
+			local variable = group.Variables[i]
+			if ((variable.Type ~= SettingType.Note) and (variable.Type ~= SettingType.Separator)) then
+				self.__Config[group.Name][variable.Name] = variable.Default
+			end
+		end
+	end
+	
+	PrintLocal("Reset advanced settings!")
 
 end
 
@@ -1646,6 +2153,24 @@ Callbacks:Bind("Overrides", function()
 	
 	end
 
+	function OnRecall(unit)
+	
+		Callbacks:Call("Recall", unit)
+	
+	end
+	
+	function OnAbortRecall(unit)
+	
+		Callbacks:Call("AbortRecall", unit)
+	
+	end
+	
+	function OnFinishRecall(unit)
+	
+		Callbacks:Call("FinishRecall", unit)
+	
+	end
+	
 	function SimpleTS:IsValid(target, range, _)
 	
 		return IsValid(target, math.sqrt(range))
@@ -1852,13 +2377,13 @@ Callbacks:Bind("Overrides", function()
 		Callbacks:Bind("ProcessSpell", function(unit, spell) self:__OnProcessSpell(unit, spell) end)
 	
 	end
-
+	
 	if (SxOrb) then
 		
-		function SxOrbWalk:GetMyRange()
+		function SxOrb:GetMyRange()
 		
-			return myHero.range + (myHero.boundingRadius * 2) - 10
-		  
+			return Player:GetRange()
+		
 		end
 		
 	end
