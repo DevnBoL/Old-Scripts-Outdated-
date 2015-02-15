@@ -1,1 +1,1 @@
-Script cannot disable SxOrb anymore, please disable it yourself if using SAC:R! Also I accidentally disabled auto-updater, please re-enable it!
+SxOrbWalk has been disabled by default, if you still wish to use it (may cause bugsplats) you can enable it through the script!
