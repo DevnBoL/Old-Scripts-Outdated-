@@ -1,0 +1,1 @@
+SxOrbWalk is disabled by default because it is causing bugsplats for some users! It can be re-enabled through the scripts source.
