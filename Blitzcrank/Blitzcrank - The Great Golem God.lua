@@ -5,8 +5,8 @@
 ---\===================================================//---
 
 	Script:			Blitzcrank - The Great Golem God
-	Version:		1.02
-	Script Date:	2015-02-04
+	Version:		1.03
+	Script Date:	2015-02-16
 	Author:			Devn
 
 ---//==================================================\\---
@@ -21,6 +21,10 @@
 		
 	Version 1.02:
 		- Fixed Q skillshot width.
+		
+	Version 1.03:
+		- Added auto-leveler.
+		- Added support to disable SxOrbWalk completely.
 
 --]]
 
@@ -29,6 +33,7 @@
 ---\===================================================//---
 
 _G.BlitzcrankGod_AutoUpdate			= true
+_G.BlitzcrankGod_DisableSxOrbWalk	= true
 _G.BlitzcrankGod_EnableDebugMode	= false
 
 ---//==================================================\\---
@@ -51,8 +56,9 @@ GodLib.Update.Script		= "Blitzcrank - The Great Golem God.lua"
 -- Script variables.
 GodLib.Script.Variables		= "BlitzcrankGod"
 GodLib.Script.Name 			= "Blitzcrank - The Great Golem God"
-GodLib.Script.Version		= "1.02"
-GodLib.Script.Date			= "2015-02-04"
+GodLib.Script.Version		= "1.03"
+GodLib.Script.Date			= "2015-02-16"
+GodLib.Script.SafeVersion	= "5.3"
 
 -- Required libraries.
 GodLib.RequiredLibraries	= {
@@ -69,11 +75,11 @@ Callbacks:Bind("Initialize", function()
 	SetupDebugger()
 	SetupConfig()
 	
-	PrintLocal(Format("Script v{1} loaded successfully!", ScriptVersion))
-
 	ScriptManager:GetAsyncWebResult(GodLib.Update.Host, Format("/{1}/{2}", GodLib.Update.Path, "Message.txt"), function(message)
 		PrintLocal(message)
 	end)
+
+	PrintLocal(Format("Script v{1} loaded successfully!", ScriptVersion))
 
 end)
 
@@ -88,9 +94,9 @@ end)
 Callbacks:Bind("InterruptableSpell", function(unit, data)
 
 	if (ValidTarget(unit)) then
-		if (Spells[_E]:IsReady() and Config.Interrupter.UseE and SxOrb:CanAttack() and InRange(unit, SxOrb:GetMyRange())) then
+		if (Spells[_E]:IsReady() and Config.Interrupter.UseE and Player:CanAttack() and InRange(unit, Player:GetRange())) then
 			Spells[_E]:Cast()
-			SxOrb:MyAttack(unit)
+			myHero:Attack(unit)
 		elseif (Spells[_Q]:IsReady() and Config.Interrupter.UseQ and Spells[_Q]:InRange(unit) and (data.DangerLevel >= Config.Interrupter.MinDangerLevelQ)) then
 			Spells[_Q]:Cast(unit)
 		elseif (Spells[_R]:IsReady() and Config.Interrupter.UseR and Spells[_R]:InRange(unit) and (data.DangerLevel >= Config.Interrupter.MinDangerLevelR)) then
@@ -102,10 +108,18 @@ end)
 
 Callbacks:Bind("AfterAttack", function(target)
 
-	if (ValidTarget(target) and Spells[_E]:IsReady() and (Config.Combo.E.Use > 1)) then
-		if ((CurrentTarget == target) or (Config.Combo.E.Use == 3)) then
-			Spells[_E]:Cast()
-			SxOrb:MyAttack(target)
+	if (ValidTarget(target) and Spells[_E]:IsReady()) then
+		local isGrabTarget = (CurrentTarget == target)
+		if (Config.Combo.E.Use > 1) then
+			if (HaveEnoughMana(Config.Combo.E.MinMana) and ((Config.Combo.E.Use == 3) or isGrabTarget)) then
+				Spells[_E]:Cast()
+				myHero:Attack(target)
+			end
+		elseif (Config.Harass.E.Use > 1) then
+			if (HaveEnoughMana(Config.Harass.E.MinMana) and ((Config.Harass.E.Use == 3) or isGrabTarget)) then
+				Spells[_E]:Cast()
+				myHero:Attack(target)
+			end
 		end
 	end
 
@@ -126,11 +140,18 @@ function SetupVariables()
 	
 	CurrentTarget	= nil
 	
-	Config			= MenuConfig("BlitzcrankGod", ScriptName)
+	Config			= MenuConfig(VariableName, ScriptName)
 	Selector		= SimpleTS(STS_LESS_CAST_PHYSICAL)
 	Interrupter		= Interrupter()
+	AutoLeveler		= AutoLevelManager()
 	
 	Spells[_Q]:SetSkillshot(SKILLSHOT_LINEAR, 80, 0.25, 1800, true)
+	
+	AutoLeveler:AddStartSequence("Q > E > W", { _Q, _E, _W }, true)
+	
+	AutoLeveler:AddEndSequence("Q > E > W", { _Q, _Q, _R, _Q, _E, _Q, _E, _R, _E, _E, _W, _W, _R, _W, _W }, true)
+	AutoLeveler:AddEndSequence("Q > W > E", { _Q, _Q, _R, _Q, _W, _Q, _W, _R, _W, _W, _E, _E, _R, _E, _E })
+	AutoLeveler:AddEndSequence("E > Q > W", { _E, _E, _R, _E, _Q, _E, _Q, _R, _Q, _Q, _W, _W, _R, _W, _W })
 	
 	TickManager:Add("Combo", "Combo Mode", 500, function() OnComboMode(Config.Combo) end)
 	TickManager:Add("Harass", "Harass Mode", 500, function() OnHarassMode(Config.Harass) end)
@@ -157,30 +178,39 @@ function SetupDebugger()
 	Debugger:Variable("Misc", "Current Target", function() return (CurrentTarget and CurrentTarget.charName or "No target") end)
 	Debugger:Variable("Misc", "Is Attacking", function() return Player.IsAttacking end)
 	Debugger:Variable("Misc", "Is Evading", function() return IsEvading() end)
+	Debugger:Variable("Misc", "Is Recalling", function() return Player.IsRecalling end)
 	
 end
 
 function SetupConfig()
 
-	Config:Menu("Orbwalker", "Settings: Orbwalker")
+	if (SxOrb) then
+		Config:Menu("OrbWalker", "Settings: Orb-Walker")
+		SxOrb:LoadToMenu(Config.OrbWalker)
+	end
+	
 	Config:Menu("Selector", "Settings: Target Selector")
 	Config:Menu("Combo", "Settings: Combo Mode")
 	Config:Menu("Harass", "Settings: Harass Mode")
 	Config:Menu("Killstealing", "Settings: Killstealing")
+	Config:Menu("AutoLevel", "Settings: Skill Level Manager")
 	Config:Menu("Interrupter", "Settings: Auto-Interrupter")
+	Config:Menu("AntiGapcloser", "Settings: Anti-Gapcloser")
 	Config:Menu("Drawing", "Settings: Drawing")
 	Config:Menu("TickManager", "Settings: Tick Manager")
 	Config:Separator()
 	Config:Info("Version", ScriptVersion)
 	Config:Info("Build Date", ScriptDate)
+	Config:Info("Tested With", Format("LoL {1}", SafeVersion))
 	Config:Info("Author", "Devn")
 	
-	SxOrb:LoadToMenu(Config.Orbwalker)
 	Selector:LoadToMenu(Config.Selector)
 	SetupConfig_Combo(Config.Combo)
 	SetupConfig_Harass(Config.Harass)
 	SetupConfig_Killstealing(Config.Killstealing)
+	AutoLeveler:LoadToMenu(Config.AutoLevel)
 	SetupConfig_Interrupter(Config.Interrupter)
+	SetupConfig_AntiGapcloser(Config.AntiGapcloser)
 	SetupConfig_Drawing(Config.Drawing)
 	TickManager:LoadToMenu(Config.TickManager)
 	
@@ -296,6 +326,9 @@ function SetupConfig_Drawing(config)
 
 	DrawManager:LoadToMenu(config)
 	config:Separator()
+	config:Toggle("PermaShow", "Show Perma Show Menu", true)
+	config:DropDown("PermaShowColor", "Perma Show Color", DrawManager:GetColorIndex("Dark Green"), DrawManager.Colors)
+	config:Separator()
 	config:Toggle("AA", "Draw Auto-Attack Range", true)
 	config:DropDown("AAColor", "Range Color", 1, DrawManager.Colors)
 	config:Separator()
@@ -335,12 +368,12 @@ function OnComboMode(config)
 	if (Spells[_E]:IsReady() and (config.E.Use > 1) and HaveEnoughMana(config.E.MinMana)) then
 		if (CurrentTarget and UnitHasBuff(CurrentTarget, "RocketGrab")) then
 			Spells[_E]:Cast()
-			SxOrb:MyAttack(CurrentTarget)
+			myHero:Attack(CurrentTarget)
 		elseif (config.E.Use == 2) then
-			local target = Selector:GetTarget(SxOrb:GetMyRange())
+			local target = Selector:GetTarget(Player:GetRange())
 			if (IsValid(target)) then
 				Spells[_E]:Cast()
-				SxOrb:MyAttack(target)
+				myHero:Attack(target)
 			end
 		end
 	end
@@ -378,12 +411,12 @@ function OnHarassMode(config)
 	if (Spells[_E]:IsReady() and (config.E.Use > 1) and HaveEnoughMana(config.E.MinMana)) then
 		if (CurrentTarget and UnitHasBuff(CurrentTarget, "RocketGrab")) then
 			Spells[_E]:Cast()
-			SxOrb:MyAttack(CurrentTarget)
+			myHero:Attack(CurrentTarget)
 		elseif (config.E.Use == 2) then
-			local target = Selector:GetTarget(SxOrb:GetMyRange())
+			local target = Selector:GetTarget(Player:GetRange())
 			if (IsValid(target)) then
 				Spells[_E]:Cast()
-				SxOrb:MyAttack(target)
+				myHero:Attack(target)
 			end
 		end
 	end
@@ -413,10 +446,14 @@ function OnKillsteal(config)
 
 end
 
+---//==================================================\\---
+--|| > Draw Callback Handlers							||--
+---\===================================================//---
+
 function OnDrawRanges(config)
 
 	if (config.AA) then
-		DrawManager:DrawCircleAt(myHero, SxOrb:GetMyRange(), config.AAColor)
+		DrawManager:DrawCircleAt(myHero, Player:GetRange(), config.AAColor)
 	end
 
 	if (config.Q) then
@@ -436,5 +473,9 @@ end
 function OnUpdateTarget()
 
 	CurrentTarget = Selector:GetTarget(Spells[_Q].Range)
+
+	if (SxOrb) then
+		SxOrb:ForceTarget(CurrentTarget)
+	end
 
 end
