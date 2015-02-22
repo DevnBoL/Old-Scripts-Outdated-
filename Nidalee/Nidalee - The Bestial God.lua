@@ -60,7 +60,7 @@
 
 -- Main Script
 _G.NidaleeGod_AutoUpdate		= true
-_G.NidaleeGod_DisableSxOrbWalk	= true
+_G.NidaleeGod_DisableSxOrbWalk	= false
 _G.NidaleeGod_EnableDebugMode	= false
 
 ---//=================================================================================================\\---
