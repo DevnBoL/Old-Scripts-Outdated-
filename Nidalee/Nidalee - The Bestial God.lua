@@ -51,6 +51,9 @@
 		
 	Version 1.05:
 		- Fixed pounce casting.
+		
+	Version 1.06:
+		- Changed SxOrb:MyAttack(unit) to SxOrb:Attack(unit).
 
 --]]
 
@@ -83,8 +86,8 @@ GodLib.Update.Script		= "Nidalee - The Bestial God.lua"
 -- Script variables.
 GodLib.Script.Variables		= "NidaleeGod"
 GodLib.Script.Name 			= "Nidalee - The Bestial God"
-GodLib.Script.Version		= "1.05"
-GodLib.Script.Date			= "2015-02-14"
+GodLib.Script.Version		= "1.06"
+GodLib.Script.Date			= "2015-02-22"
 GodLib.Script.SafeVersion	= "5.3"
 GodLib.Script.Key			= "VILJJPJJIPN"
 
@@ -286,7 +289,7 @@ end
 
 function SetupConfig()
 	
-	if (not DisableSxOrbWalk) then
+	if (SxOrb) then
 		Config:Menu("OrbWalker", "Settings: Orb-Walker")
 		SxOrb:LoadToMenu(Config.OrbWalker)
 	end
@@ -1095,9 +1098,9 @@ function CastTakedown(unit)
 
 	Spells.Cougar[_Q]:Cast()
 	
-	if (not DisableSxOrbWalk) then
+	if (SxOrb) then
 		SxOrb:ResetAA()
-		SxOrb:MyAttack(unit)
+		SxOrb:Attack(unit)
 	else
 		myHero:Attack(unit)
 	end
