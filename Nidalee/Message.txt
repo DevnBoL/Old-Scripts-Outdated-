@@ -1,1 +1,1 @@
-SxOrbWalk has been disabled by default, if you still wish to use it (may cause bugsplats) you can enable it through the scripts source!
+SxOrbWalk should be working fine now, I re-enabled it bydefault so redownload the script or enable it yourself if you wish to use it!
