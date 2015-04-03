@@ -5,7 +5,7 @@
 ---\===================================================//---
 
 	Library:		GodLib
-	Version:		1.14
+	Version:		1.15
 	Author:			Devn
 
 ---//==================================================\\---
@@ -71,6 +71,9 @@
 		- Added AutoLevelManager class.
 		- Added AdvancedSettings class.
 		
+	Version 1.15:
+		- Changed SourceLib to ncustom working version.
+		
 --]]
 
 ---//==================================================\\---
@@ -134,8 +137,8 @@ AddLoadCallback(function()
 	EnableDebugMode							= _G[Format("{1}_EnableDebugMode", VariableName)] or false
 
 	-- Default required libraries.
-	GodLib.RequiredLibraries["SourceLib"]	= "https://raw.githubusercontent.com/gbilbao/Bilbao/master/BoL1/Common/SourceLib.lua"
-	GodLib.RequiredLibraries["VPrediction"]	= "https://raw.githubusercontent.com/Ralphlol/BoLGit/master/VPrediction.lua"
+	GodLib.RequiredLibraries["SourceLib"]	= "http://pastebin.com/raw.php?i=EfZ92ZHe"
+	GodLib.RequiredLibraries["VPrediction"]	= "https://raw.githubusercontent.com/SidaBoL/Scripts/master/Common/VPrediction.lua"
 	
 end)
 
