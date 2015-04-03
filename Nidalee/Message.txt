@@ -1,1 +1,1 @@
-SxOrbWalk should be working fine now, I re-enabled it bydefault so redownload the script or enable it yourself if you wish to use it!
+If the script is not casting some spells for you then remove the library from "Scripts/Common/SourceLib.lua" and it will download my working version.
