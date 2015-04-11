@@ -5,7 +5,7 @@
 ---\===================================================//---
 
 	Library:		GodLib
-	Version:		1.15
+	Version:		1.16
 	Author:			Devn
 
 ---//==================================================\\---
@@ -72,7 +72,11 @@
 		- Added AdvancedSettings class.
 		
 	Version 1.15:
-		- Changed SourceLib to ncustom working version.
+		- Now uses LevelSpell packets from Pain.
+		
+	Version 1.16:
+		- Removed level spell packets because they change every patch.
+		- Temporarily removed buffs.
 		
 --]]
 
@@ -82,7 +86,7 @@
 
 GodLib					= {
 	__Library 			= {
-		Version			= "1.14",
+		Version			= "1.16",
 		Update			= {
 			Host		= "raw.github.com",
 			Path		= "DevnBoL/Scripts/master/GodLib",
@@ -137,8 +141,8 @@ AddLoadCallback(function()
 	EnableDebugMode							= _G[Format("{1}_EnableDebugMode", VariableName)] or false
 
 	-- Default required libraries.
-	GodLib.RequiredLibraries["SourceLib"]	= "http://pastebin.com/raw.php?i=EfZ92ZHe"
-	GodLib.RequiredLibraries["VPrediction"]	= "https://raw.githubusercontent.com/SidaBoL/Scripts/master/Common/VPrediction.lua"
+	GodLib.RequiredLibraries["SourceLib"]	= "https://raw.githubusercontent.com/gbilbao/Bilbao/master/BoL1/Common/SourceLib.lua"
+	GodLib.RequiredLibraries["VPrediction"]	= "https://raw.githubusercontent.com/Ralphlol/BoLGit/master/VPrediction.lua"
 	
 end)
 
@@ -261,6 +265,7 @@ end
 
 function UnitHasBuff(unit, name, loose)
 
+	--[[
 	for i = 1, unit.buffCount do
         local buff = unit:getBuff(i)
 		if (buff.valid and BuffIsValid(buff)) then
@@ -273,6 +278,7 @@ function UnitHasBuff(unit, name, loose)
 			end
 		end
     end
+	--]]
 	
     return false
 
@@ -741,14 +747,9 @@ end
 
 function ScriptManager:__CheckForSAC()
 
-	if (_G.AutoCarry) then
-		FoundSAC = true
-		Callbacks:Call("FoundSAC")
-	elseif (_G.Reborn_Loaded) then
-		FoundSAC = true
-		DelayAction(function()
-			self:__CheckForSAC()
-		end, 1)
+	if (_G.AutoCarry or _G.Reborn_Loaded) then
+		SACLoaded = true
+		Callbacks:Call("SACLoaded")
 	end
 
 end
@@ -1258,40 +1259,8 @@ end
 
 function Player:__OnInitialize()
 
-	Callbacks:Bind("Recall", function() self:__OnRecall(unit) end)
-	Callbacks:Bind("AbortRecall", function() self:__OnAbortRecall(unit) end)
-	Callbacks:Bind("FinishRecall", function() self:__OnFinishRecall(unit) end)
-
-	if (SxOrb) then
-		
-		Callbacks:Bind("Attack", function() self.IsAttacking = true end)
-		Callbacks:Bind("AfterAttack", function() DelayAction(function() self.IsAttacking = false end) end)
-		
-	end
-
-end
-
-function Player:__OnRecall(unit)
-
-	if (unit.networkID == myHero.networkID) then
-		self.IsRecalling = true
-	end
-
-end
-
-function Player:__OnAbortRecall(unit)
-
-	if (unit.networkID == myHero.networkID) then
-		self.IsRecalling = false
-	end
-
-end
-
-function Player:__OnFinishRecall(unit)
-
-	if (unit.networkID == myHero.networkID) then
-		self.IsRecalling = false
-	end
+	Callbacks:Bind("Attack", function() self.IsAttacking = true end)
+	Callbacks:Bind("AfterAttack", function() self.IsAttacking = false end)
 
 end
 
@@ -1897,6 +1866,33 @@ function AutoLevelManager:LoadToMenu(config)
 		config.End.Enabled = false
 	end
 	
+	if (VIP_USER) then
+		_G.LevelSpell = function(ID)
+			local p 	= CLoLPacket(0x009A)
+			offsets 	= {
+				[_Q] 	= 0x83,
+				[_W]	= 0x08,
+				[_E] 	= 0xB5,
+				[_R] 	= 0xEC,
+			}
+			p.vTable	= 0xF246E0
+			p:EncodeF(myHero.networkID)
+			p:Encode4(0x5A5A5A5A)
+			p:Encode1(0x46)
+			p:Encode4(0xD5D5D5D5)
+			p:Encode1(offsets[ID])
+			p:Encode4(0x07070707)
+			p:Encode1(0xF8)
+			p:Encode1(0xEA)
+			p:Encode1(0x0C)
+			p:Encode2(0x0000)
+			SendPacket(p)
+		end
+	else
+		config.Enabled = false
+		config:Note("LevelSpell() is currently broken!")
+	end
+	
 	self.__Config = config
 	
 	TickManager:Add("AutoLevel", "Auto-Level Check", 1, function() self:__OnTick() end)
@@ -2004,176 +2000,11 @@ function AutoLevelManager:__OnTick()
 end
 
 ---//==================================================\\---
---|| > AdvancedSettings Class							||--
----\===================================================//---
-
-SettingType	= {
-	Note		= 1,
-	DropDown	= 2,
-	Separator	= 3,
-	Toggle		= 4,
-}
-
-class("AdvancedSettings")
-
-function AdvancedSettings:__init(name, header)
-
-	self.__Config	= nil
-	
-	self.__Name		= name
-	self.__Header	= header
-	
-	self.__Groups	= { }
-
-end
-
-function AdvancedSettings:__OnResetAdvanced()
-
-	if (self.__Config.Reset) then
-		self:Reset()
-		self.__Config.Reset = false
-	end
-
-end
-
-function AdvancedSettings:__CreateMenu()
-
-	local config	= MenuConfig(Format("{1}_Advanced", self.__Name), Format("{1}: Advanced", self.__Header))
-	
-	for i = 1, #self.__Groups do
-		local group = self.__Groups[i]
-		config:Menu(group.Name, Format("Settings: {1}", group.Header))
-		for i = 1, #group.Variables do
-			local variable = group.Variables[i]
-			if (variable.Type == SettingType.Note) then
-				config[group.Name]:Note(variable.Name)
-			elseif (variable.Type == SettingType.DropDown) then
-				config[group.Name]:DropDown(variable.Name, variable.Header, variable.Default, variable.Objects)
-			elseif (variable.Type == SettingType.Separator) then
-				config[group.Name]:Separator()
-			elseif (variable.Type == SettingType.Toggle) then
-				config[group.Name]:Toggle(variable.Name, variable.Header, variable.Default)
-			end
-		end
-	end
-	
-	config:Separator()
-	config:Toggle("Reset", "Reset Advanced Settings", false, false)
-	
-	self.__Config	= config
-
-end
-
-function AdvancedSettings:LoadToMenu(config)
-
-	config:Toggle("UseAdvanced", "Use Advanced Settings", false)
-	config:Note("Requires reload, uses default if disabled.")
-	
-	if (config.UseAdvanced) then
-		self:__CreateMenu()
-		TickManager:Add("ResetAdvanced", "Reset Advanced Settings", 1, function() self:__OnResetAdvanced() end)
-	end
-
-end
-
-function AdvancedSettings:AddGroup(name, header)
-
-	table.insert(self.__Groups, {
-		Name		= name,
-		Header		= header,
-		Variables	= { },
-	})
-
-end
-
-function AdvancedSettings:AddVariable(group, type, variable, header, default, objects)
-
-	for _, groupData in ipairs(self.__Groups) do
-		if (groupData.Name:Equals(group)) then
-			table.insert(groupData.Variables, {
-				Name		= variable,
-				Type		= type,
-				Header		= header,
-				Default		= default,
-				Objects		= objects,
-			})
-			return
-		end
-	end
-
-end
-
-function AdvancedSettings:Get(name, var)
-
-	for _, group in ipairs(self.__Groups) do
-		if (group.Name:Equals(name)) then
-			for _, variable in ipairs(group.Variables) do
-				if (variable.Name and variable.Name:Equals(var)) then
-					if (self.__Config) then
-						return self.__Config[name][var]
-					else
-						return variable.Default
-					end
-				end
-			end
-			return
-		end
-	end
-
-end
-
-function AdvancedSettings:Reset()
-
-	for i = 1, #self.__Groups do
-		local group = self.__Groups[i]
-		for i = 1, #group.Variables do
-			local variable = group.Variables[i]
-			if ((variable.Type ~= SettingType.Note) and (variable.Type ~= SettingType.Separator)) then
-				self.__Config[group.Name][variable.Name] = variable.Default
-			end
-		end
-	end
-	
-	PrintLocal("Reset advanced settings!")
-
-end
-
----//==================================================\\---
 --|| > Override Functions								||--
 ---\===================================================//---
 
 Callbacks:Bind("Overrides", function()
 
-	function OnGainBuff(unit, buff)
-	
-		Callbacks:Call("GainBuff", unit, buff)
-	
-	end
-	
-	function OnLoseBuff(unit, buff)
-	
-		Callbacks:Call("LoseBuff", unit, buff)
-	
-	end
-
-	function OnRecall(unit)
-	
-		Callbacks:Call("Recall", unit)
-	
-	end
-	
-	function OnAbortRecall(unit)
-	
-		Callbacks:Call("AbortRecall", unit)
-	
-	end
-	
-	function OnFinishRecall(unit)
-	
-		Callbacks:Call("FinishRecall", unit)
-	
-	end
-	
 	function SimpleTS:IsValid(target, range, _)
 	
 		return IsValid(target, math.sqrt(range))
@@ -2379,16 +2210,6 @@ Callbacks:Bind("Overrides", function()
 		TickManager:Add("Interrupter", "Interrupter Tick Rate", 500, function() self:__OnTick() end)
 		Callbacks:Bind("ProcessSpell", function(unit, spell) self:__OnProcessSpell(unit, spell) end)
 	
-	end
-	
-	if (SxOrb) then
-		
-		function SxOrb:GetMyRange()
-		
-			return Player:GetRange()
-		
-		end
-		
 	end
 	
 end)
