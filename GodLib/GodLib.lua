@@ -142,7 +142,7 @@ AddLoadCallback(function()
 
 	-- Default required libraries.
 	GodLib.RequiredLibraries["SourceLib"]	= "https://raw.githubusercontent.com/gbilbao/Bilbao/master/BoL1/Common/SourceLib.lua"
-	GodLib.RequiredLibraries["VPrediction"]	= "https://raw.githubusercontent.com/Ralphlol/BoLGit/master/VPrediction.lua"
+	GodLib.RequiredLibraries["VPrediction"]	= "http://privatepaste.com/download/5982763eee"
 	
 end)
 
