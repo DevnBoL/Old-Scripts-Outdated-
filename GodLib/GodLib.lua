@@ -5,7 +5,7 @@
 ---\===================================================//---
 
 	Library:		GodLib
-	Version:		1.16
+	Version:		1.17
 	Author:			Devn
 
 ---//==================================================\\---
@@ -78,6 +78,9 @@
 		- Removed level spell packets because they change every patch.
 		- Temporarily removed buffs.
 		
+	Version 1.17:
+		- Re-enabled buffs.
+		
 --]]
 
 ---//==================================================\\---
@@ -86,7 +89,7 @@
 
 GodLib					= {
 	__Library 			= {
-		Version			= "1.16",
+		Version			= "1.17",
 		Update			= {
 			Host		= "raw.github.com",
 			Path		= "DevnBoL/Scripts/master/GodLib",
@@ -265,7 +268,6 @@ end
 
 function UnitHasBuff(unit, name, loose)
 
-	--[[
 	for i = 1, unit.buffCount do
         local buff = unit:getBuff(i)
 		if (buff.valid and BuffIsValid(buff)) then
@@ -278,7 +280,6 @@ function UnitHasBuff(unit, name, loose)
 			end
 		end
     end
-	--]]
 	
     return false
 
